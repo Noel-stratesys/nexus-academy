@@ -5,7 +5,7 @@
 [blue]
 label = "production"
 flags = []
-cambios = ["A"]
+cambios = []
 
 # El cambio en pruebas y el porcentaje de viajeros que lo reciben (0-100).
 [green]
@@ -22,21 +22,3 @@ usa_tools_esperadas = 0.8
 evita_tools_prohibidas = 1.0
 aprobacion_correcta = 0.9
 menciona_datos = 0.6
-
-[[historial]]
-fecha = "2026-11-12T09:00:27"
-accion = "prepare"
-cambio = "A"
-detalle = "nexus/executor v2"
-
-[[historial]]
-fecha = "2026-11-12T09:01:26"
-accion = "shift"
-cambio = "A"
-detalle = "0 % → 10 %"
-
-[[historial]]
-fecha = "2026-11-12T09:02:06"
-accion = "promote"
-cambio = "A"
-detalle = "prueba de etiquetas"
