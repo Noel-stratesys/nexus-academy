@@ -69,8 +69,13 @@ async def run_turn(
     tags: Sequence[str] = (),
     metadata: Mapping[str, str] | None = None,
     environment: str | None = None,
+    release: str | None = None,
 ) -> TurnResult:
-    """Un turno completo: la petición, las aprobaciones que pida y la respuesta final."""
+    """Un turno completo: la petición, las aprobaciones que pida y la respuesta final.
+
+    ``release`` es la versión de Nexus que atiende el turno (la ponen el simulador y el
+    historial); sin ella, la traza no lleva release.
+    """
 
     config = with_langfuse({"configurable": {"thread_id": thread_id}})
     before = len((await graph.aget_state(config)).values.get("messages", []))
@@ -83,6 +88,7 @@ async def run_turn(
         tags=tags,
         metadata=trace_metadata,
         environment=environment,
+        release=release,
     ):
         with langfuse.start_as_current_observation(
             name=TRACE_NAME, as_type="agent", input={"mensaje": text}
