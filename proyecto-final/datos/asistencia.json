@@ -1,0 +1,44 @@
+{
+  "nota": "Servicio de Asistencia de MdV: un empleado acompaña al viajero desde el punto de encuentro de la estación de origen hasta la salida de la estación de destino. Solo se presta entre estaciones accesibles con al menos un ascensor en servicio ese día.",
+  "servicio": "Servicio de Asistencia MdV",
+  "en_servicio_desde": "2026-11-16",
+  "gratuito": true,
+  "antelacion": {
+    "minima_dias": 1,
+    "maxima_dias": 30,
+    "regla": "El viaje tiene que ser como pronto el día siguiente al de la reserva y como tarde 30 días después."
+  },
+  "horario": {
+    "lunes_a_viernes": {"descripcion": "De lunes a viernes no festivos", "desde": "07:00", "hasta": "22:00"},
+    "sabado_domingo_festivo": {"descripcion": "Sábados, domingos y festivos", "desde": "09:00", "hasta": "21:00"}
+  },
+  "tipos": {
+    "silla_ruedas": "Viajero en silla de ruedas",
+    "movilidad_reducida": "Viajero que camina con dificultad, con bastón, muletas o andador",
+    "baja_vision": "Viajero ciego o con baja visión",
+    "acompanamiento": "Viajero que necesita orientación, por ejemplo una persona mayor o con discapacidad cognitiva"
+  },
+  "espera_cortesia_min": 15,
+  "cancelacion_horas_antes": 2,
+  "acompanantes_max": 1,
+  "puntos_encuentro": {
+    "PVI": {"acceso": "Passeig del Port", "detalle": "junto al interfono de asistencia del vestíbulo"},
+    "PMA": {"acceso": "Carrer Major", "detalle": "junto al interfono de asistencia del vestíbulo"},
+    "ECE": {"acceso": "Avinguda de l'Estació", "detalle": "junto a la oficina de Atención al Cliente"},
+    "MNO": {"acceso": "Plaça del Mercat", "detalle": "junto al interfono de asistencia del vestíbulo"},
+    "UNI": {"acceso": "Carrer dels Estudis", "detalle": "junto al interfono de asistencia del vestíbulo"},
+    "TAL": {"acceso": "Carrer del Turó", "detalle": "en la puerta del ascensor, a pie de calle"},
+    "PRI": {"acceso": "Passeig del Riu", "detalle": "en la puerta del ascensor, a pie de calle"},
+    "SMD": {"acceso": "Plaça de Sant Martí", "detalle": "en la puerta del ascensor, a pie de calle"},
+    "HGE": {"acceso": "Avinguda del Doctor Puig", "detalle": "junto al interfono de asistencia del vestíbulo"},
+    "CAG": {"acceso": "Carrer de l'Àliga", "detalle": "en la puerta del ascensor, a pie de calle"},
+    "AER": {"acceso": "Terminal 1", "detalle": "junto a la oficina de Atención al Cliente del vestíbulo"},
+    "PLL": {"acceso": "Passeig de la Platja", "detalle": "en la puerta del ascensor, a pie de calle"},
+    "PMR": {"acceso": "Moll de Llevant", "detalle": "en la puerta del ascensor, a pie de calle"},
+    "RFL": {"acceso": "Carrer de les Roses", "detalle": "junto al interfono de asistencia del vestíbulo"},
+    "MIR": {"acceso": "Plaça dels Pins", "detalle": "en la puerta del ascensor, a pie de calle"},
+    "PSU": {"acceso": "Carrer de la Indústria", "detalle": "en la puerta del ascensor, a pie de calle"},
+    "FIR": {"acceso": "Avinguda dels Congressos", "detalle": "junto al interfono de asistencia del vestíbulo"},
+    "TBL": {"acceso": "Carrer de Ponent", "detalle": "en la puerta del ascensor, a pie de calle"}
+  }
+}

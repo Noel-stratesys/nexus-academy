@@ -45,12 +45,12 @@ class ModelConfig(BaseModel):
 
 
 class OrchestratorModel(ModelConfig):
-    model: str = "ollama:qwen3:4b-instruct"
+    model: str = "groq:llama-3.3-70b-versatile"
     max_tokens: int | None = 256
 
 
 class ExecutorModel(ModelConfig):
-    model: str = "ollama:qwen3:4b-instruct"
+    model: str = "groq:llama-3.3-70b-versatile"
     temperature: float = 0.2
     max_tokens: int | None = 2048
 

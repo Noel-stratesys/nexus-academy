@@ -1,0 +1,42 @@
+# Estado de los despliegues de Nexus (capítulo 5).
+# Lo escribe `uv run release`: mejor cambiarlo con ese comando que a mano.
+
+# La versión estable. Sus prompts tienen el label `production`.
+[blue]
+label = "production"
+flags = []
+cambios = ["A"]
+
+# El cambio en pruebas y el porcentaje de viajeros que lo reciben (0-100).
+[green]
+cambio = ""
+label = "green"
+flags = []
+traffic = 0
+puerta = ""
+
+# La puerta: media mínima de cada score del experimento sobre el dataset agente.
+[gate]
+sin_errores = 0.95
+usa_tools_esperadas = 0.8
+evita_tools_prohibidas = 1.0
+aprobacion_correcta = 0.9
+menciona_datos = 0.6
+
+[[historial]]
+fecha = "2026-11-12T09:00:27"
+accion = "prepare"
+cambio = "A"
+detalle = "nexus/executor v2"
+
+[[historial]]
+fecha = "2026-11-12T09:01:26"
+accion = "shift"
+cambio = "A"
+detalle = "0 % → 10 %"
+
+[[historial]]
+fecha = "2026-11-12T09:02:06"
+accion = "promote"
+cambio = "A"
+detalle = "prueba de etiquetas"

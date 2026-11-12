@@ -5,6 +5,11 @@
     uv run experiment agente --repeat 3
     uv run experiment rag --rag-top-k 8 --rag-chunk-size 100 --rag-solo-vigentes
     uv run experiment agente --model executor=openai:otro-modelo
+    uv run experiment agente --release green --gate
+
+Con ``--release blue|green`` se prueba una de las dos versiones de ``release.toml`` (su
+label y sus flags). Con ``--gate`` se comparan las medias con los mínimos de la puerta y
+el comando termina con error si alguno no llega.
 
 Cada ejecución queda en Langfuse como un *run* del dataset, con la configuración en su
 metadata, y se puede comparar con otras en la pestaña del dataset.
@@ -14,6 +19,7 @@ import argparse
 import statistics
 import sys
 from collections import defaultdict
+from dataclasses import replace
 from datetime import datetime
 from typing import Any
 
@@ -22,6 +28,8 @@ from evaluation.evaluators import EVALUATORS, averages
 from evaluation.tasks import RunSettings, make_task
 from nexus.prompts import PROMPTS
 from nexus.settings import Models, settings
+from release.gate import check_gate, format_gate, gate_passed
+from release.state import ReleaseState, load_state, save_state
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -29,8 +37,19 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         prog="experiment", description="Prueba una variante de Nexus sobre un dataset."
     )
     parser.add_argument("dataset", choices=sorted(DATASETS), help="Dataset sobre el que probar.")
-    parser.add_argument(
+    version = parser.add_mutually_exclusive_group()
+    version.add_argument(
         "--label", default=None, help="Label de los prompts a probar (por defecto: production)."
+    )
+    version.add_argument(
+        "--release",
+        choices=("blue", "green"),
+        help="Prueba esa versión de release.toml: su label y sus flags.",
+    )
+    parser.add_argument(
+        "--gate",
+        action="store_true",
+        help="Compara las medias con la puerta de release.toml; sale con error si no pasa.",
     )
     parser.add_argument(
         "--particion",
@@ -85,6 +104,55 @@ def _rag(args: argparse.Namespace) -> Any:
     return settings.rag.model_copy(update=updates)
 
 
+def release_settings(args: argparse.Namespace) -> tuple[str, frozenset[str], str]:
+    """Label, flags y nombre de la variante que pide la línea de comandos."""
+
+    flags = frozenset(args.flag)
+    if not getattr(args, "release", None):
+        label = args.label or settings.environment
+        return label, flags, args.nombre or label
+    state = load_state()
+    if args.release == "blue":
+        return state.blue.label, state.blue.flags | flags, args.nombre or "blue"
+    if not state.green.cambio:
+        sys.exit("No hay ningún cambio en green. Prepáralo con: uv run release prepare <cambio>")
+    variant = args.nombre or f"green-{state.green.cambio}"
+    return state.green.label, state.green.flags | flags, variant
+
+
+def mean_scores(scores_by_run: list[dict[str, float]]) -> dict[str, float]:
+    """La media de cada score entre repeticiones."""
+
+    names = {name for scores in scores_by_run for name in scores}
+    return {
+        name: statistics.mean(scores[name] for scores in scores_by_run if name in scores)
+        for name in names
+    }
+
+
+def apply_gate(
+    args: argparse.Namespace, scores_by_run: list[dict[str, float]], state: ReleaseState
+) -> bool:
+    """Imprime la tabla de la puerta y, si se probó green, guarda el resultado."""
+
+    rows = check_gate(mean_scores(scores_by_run), state.gate)
+    print("\nPuerta (release.toml, [gate]):")
+    print(format_gate(rows))
+    passed = gate_passed(rows)
+    if getattr(args, "release", None) == "green" and state.green.cambio:
+        resultado = "superada" if passed else "fallida"
+        green = replace(state.green, puerta=resultado)
+        detalle = ", ".join(
+            f"{row.score} {'-' if row.media is None else f'{row.media:.2f}'}" for row in rows
+        )
+        save_state(
+            replace(state, green=green).with_event(
+                "puerta", state.green.cambio, f"{resultado}: {detalle}"
+            )
+        )
+    return passed
+
+
 def prompt_versions(langfuse: Any, label: str) -> dict[str, int]:
     """La versión a la que apunta ``label`` en cada prompt, fijada para todo el run."""
 
@@ -125,12 +193,12 @@ def run(args: argparse.Namespace) -> list[dict[str, float]]:
     from nexus.llm.langfuse_client import langfuse
 
     definition = DATASETS[args.dataset]
-    label = args.label or settings.environment
+    label, flags, variant = release_settings(args)
     run_settings = RunSettings(
         prompt_versions=prompt_versions(langfuse, label),
         models=_models(args.model),
         rag=_rag(args),
-        flags=frozenset(args.flag),
+        flags=flags,
     )
     dataset = langfuse.get_dataset(definition.name)
     items = [
@@ -143,6 +211,7 @@ def run(args: argparse.Namespace) -> list[dict[str, float]]:
 
     metadata = {
         "label": label,
+        "release": getattr(args, "release", None) or "-",
         "prompts": ", ".join(f"{n} v{v}" for n, v in run_settings.prompt_versions.items()),
         "orchestrator": run_settings.models.orchestrator.model,
         "executor": run_settings.models.executor.model,
@@ -155,7 +224,6 @@ def run(args: argparse.Namespace) -> list[dict[str, float]]:
         print(f"  {key}: {value}")
 
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    variant = args.nombre or label
     scores_by_run: list[dict[str, float]] = []
     categories: dict[str, Any] = {}
     for repetition in range(1, args.repeat + 1):
@@ -188,4 +256,7 @@ def run(args: argparse.Namespace) -> list[dict[str, float]]:
 
 
 def main(argv: list[str] | None = None) -> None:
-    run(parse_args(argv))
+    args = parse_args(argv)
+    scores_by_run = run(args)
+    if args.gate and not apply_gate(args, scores_by_run, load_state()):
+        sys.exit(1)

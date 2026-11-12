@@ -9,6 +9,7 @@ from nexus.tools.horarios import consultar_horario
 from nexus.tools.incidencias import consultar_incidencias
 from nexus.tools.normativa import buscar_normativa
 from nexus.tools.objetos import buscar_objeto_perdido
+from nexus.tools.proximos import proximos_trenes
 from nexus.tools.tarifas import consultar_tarifas
 
 BASE_TOOLS: list[BaseTool] = [
@@ -23,7 +24,9 @@ BASE_TOOLS: list[BaseTool] = [
 ]
 
 # Herramientas que solo existen si su flag está activo (por ejemplo, en un despliegue).
-FLAGGED_TOOLS: dict[str, list[BaseTool]] = {}
+FLAGGED_TOOLS: dict[str, list[BaseTool]] = {
+    "proximos_trenes": [proximos_trenes],  # cambio D del capítulo 5
+}
 
 
 def tools_for(flags: frozenset[str] = frozenset()) -> list[BaseTool]:

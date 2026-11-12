@@ -1,0 +1,118 @@
+{
+  "nota": "Ascensores de las estaciones accesibles de MdV y sus cortes de servicio. Las fechas 'desde' y 'hasta' están incluidas: el ascensor no funciona en ningún momento de esos días.",
+  "estaciones": {
+    "PVI": [
+      {"id": "PVI-1", "ubicacion": "calle – vestíbulo (Passeig del Port)"},
+      {"id": "PVI-2", "ubicacion": "vestíbulo – andén L1"}
+    ],
+    "PMA": [
+      {"id": "PMA-1", "ubicacion": "calle – vestíbulo (Carrer Major)"},
+      {"id": "PMA-2", "ubicacion": "vestíbulo – andén L1"},
+      {"id": "PMA-3", "ubicacion": "vestíbulo – andén L3"}
+    ],
+    "ECE": [
+      {"id": "ECE-1", "ubicacion": "calle – vestíbulo (Avinguda de l'Estació)"},
+      {"id": "ECE-2", "ubicacion": "vestíbulo – andén L1"},
+      {"id": "ECE-3", "ubicacion": "vestíbulo – andén L2"},
+      {"id": "ECE-4", "ubicacion": "vestíbulo – estación de tren"}
+    ],
+    "MNO": [
+      {"id": "MNO-1", "ubicacion": "calle – vestíbulo (Plaça del Mercat)"},
+      {"id": "MNO-2", "ubicacion": "vestíbulo – andenes L1 y L4"}
+    ],
+    "UNI": [
+      {"id": "UNI-1", "ubicacion": "calle – vestíbulo (Carrer dels Estudis)"},
+      {"id": "UNI-2", "ubicacion": "vestíbulo – andenes L1 y L3"}
+    ],
+    "TAL": [
+      {"id": "TAL-1", "ubicacion": "calle – andén L1 (Carrer del Turó)"}
+    ],
+    "PRI": [
+      {"id": "PRI-1", "ubicacion": "calle – andén L2 (Passeig del Riu)"}
+    ],
+    "SMD": [
+      {"id": "SMD-1", "ubicacion": "calle – andén L2 (Plaça de Sant Martí)"}
+    ],
+    "HGE": [
+      {"id": "HGE-1", "ubicacion": "calle – vestíbulo (Avinguda del Doctor Puig)"},
+      {"id": "HGE-2", "ubicacion": "vestíbulo – andenes L2 y L4"}
+    ],
+    "CAG": [
+      {"id": "CAG-1", "ubicacion": "calle – andén L2 (Carrer de l'Àliga)"}
+    ],
+    "AER": [
+      {"id": "AER-1", "ubicacion": "Terminal 1 – vestíbulo"},
+      {"id": "AER-2", "ubicacion": "Terminal 2 – vestíbulo"},
+      {"id": "AER-3", "ubicacion": "vestíbulo – andén L2, lado Terminal 1"},
+      {"id": "AER-4", "ubicacion": "vestíbulo – andén L2, lado Terminal 2"}
+    ],
+    "PLL": [
+      {"id": "PLL-1", "ubicacion": "calle – andén L3 (Passeig de la Platja)"}
+    ],
+    "PMR": [
+      {"id": "PMR-1", "ubicacion": "calle – andén L3 (Moll de Llevant)"}
+    ],
+    "RFL": [
+      {"id": "RFL-1", "ubicacion": "calle – vestíbulo (Carrer de les Roses)"},
+      {"id": "RFL-2", "ubicacion": "vestíbulo – andenes L3 y L4"}
+    ],
+    "MIR": [
+      {"id": "MIR-1", "ubicacion": "calle – andén L3 (Plaça dels Pins)"}
+    ],
+    "PSU": [
+      {"id": "PSU-1", "ubicacion": "calle – andén L4 (Carrer de la Indústria)"}
+    ],
+    "FIR": [
+      {"id": "FIR-1", "ubicacion": "calle – vestíbulo (Avinguda dels Congressos)"},
+      {"id": "FIR-2", "ubicacion": "vestíbulo – andén L4"}
+    ],
+    "TBL": [
+      {"id": "TBL-1", "ubicacion": "calle – andén L4 (Carrer de Ponent)"}
+    ]
+  },
+  "fuera_de_servicio": [
+    {
+      "ascensor": "HGE-1",
+      "desde": "2026-11-02",
+      "hasta": "2026-11-27",
+      "motivo": "Sustitución del ascensor por uno nuevo",
+      "incidencia": "INC-0294"
+    },
+    {
+      "ascensor": "AER-3",
+      "desde": "2026-11-10",
+      "hasta": "2026-11-14",
+      "motivo": "Avería en el sistema de puertas"
+    },
+    {
+      "ascensor": "PMA-2",
+      "desde": "2026-11-19",
+      "hasta": "2026-11-24",
+      "motivo": "Avería en la puerta de cabina"
+    },
+    {
+      "ascensor": "TAL-1",
+      "desde": "2026-11-20",
+      "hasta": "2026-11-22",
+      "motivo": "Cambio de los cables de tracción"
+    },
+    {
+      "ascensor": "ECE-2",
+      "desde": "2026-11-21",
+      "hasta": "2026-11-21",
+      "motivo": "Revisión anual obligatoria"
+    },
+    {
+      "ascensor": "MIR-1",
+      "desde": "2026-11-24",
+      "hasta": "2026-11-30",
+      "motivo": "Renovación de la cabina"
+    },
+    {
+      "ascensor": "PSU-1",
+      "desde": "2026-11-26",
+      "hasta": "2026-11-27",
+      "motivo": "Revisión anual obligatoria"
+    }
+  ]
+}
