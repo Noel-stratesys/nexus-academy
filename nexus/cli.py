@@ -15,7 +15,7 @@ for _stream in (sys.stdout, sys.stderr):
 
 COMMANDS = {
     "agent": "Habla con Nexus en la terminal como un viajero (--usuario, --dia).",
-    "prompts": "Publica en Langfuse una versión nueva de los prompts del código.",
+    "prompts": "Publica los prompts del código como versión nueva, o mueve un label (--version).",
     "index": "Muestra los chunks de la normativa y prueba el buscador (--buscar).",
     "dataset": "Sube a Langfuse los datasets definidos en evaluation/datasets.",
     "experiment": "Ejecuta Nexus sobre un dataset y puntúa cada caso (--repeat, --label...).",
