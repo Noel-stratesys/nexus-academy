@@ -103,7 +103,7 @@ error de modelo, revisa que el nombre en **Custom models** es exactamente
 
    abre un chat con los mensajes de esa versión.
 
-     ![El botón Playground en la versión 1 de nexus/executor](img/01/04-prompt-playground.png)
+     <!-- Captura pendiente: ![El botón Playground en la versión 1 de nexus/executor](img/01/04-prompt-playground.png) -->
 2. Arriba, elige el modelo: conexión `groq` y modelo `llama-3.3-70b-versatile`. Pon la
 
    **temperatura** de la versión a mano: el Playground no la lee del `config` del
@@ -121,7 +121,7 @@ error de modelo, revisa que el nombre en **Custom models** es exactamente
    temperatura (0,9) y las mismas variables. Así lanzas la misma pregunta a los dos
      prompts a la vez.
 
-     ![El Playground con la v1 y la v2 lado a lado](img/01/05-playground-dos-ventanas.png)
+     <!-- Captura pendiente: ![El Playground con la v1 y la v2 lado a lado](img/01/05-playground-dos-ventanas.png) -->
 
 Qué esperar: dos ventanas con el mismo modelo, cada una con su prompt, su temperatura y
 las variables rellenas.
