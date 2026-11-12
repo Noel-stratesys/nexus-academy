@@ -22,7 +22,7 @@ PROMPT_NAMES = ("nexus/orchestrator", "nexus/executor")
 # Variable con la clave de cada proveedor (Ollama corre en local y no necesita clave).
 PROVIDER_KEYS = {"groq": "GROQ_API_KEY", "openai": "OPENAI_API_KEY"}
 
-# El historial que carga ``uv run seed`` va del lunes 26 de octubre al lunes 16 de
+# El historial que carga ``uv run seed`` va del lunes 26 de octubre al domingo 15 de
 # noviembre de 2026. Se mira la primera semana: las trazas que generes tú hoy caen en
 # fechas reales y no deben hacer pasar esta comprobación por error.
 HISTORY_FIRST_WEEK = (datetime(2026, 10, 26, tzinfo=UTC), datetime(2026, 11, 2, tzinfo=UTC))

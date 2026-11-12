@@ -1,6 +1,6 @@
 """Tipos compartidos del simulador de viajeros.
 
-Los usan el generador del historial (instructor/historial), ``uv run seed`` y los
+Los usan el historial que carga ``uv run seed`` (``nexus.simulation.historial``) y los
 despliegues del capítulo 5 (``release`` y ``uv run simulate``). Este fichero es el
 contrato entre esas piezas: cambiarlo afecta a todas.
 """
