@@ -1,0 +1,72 @@
+[
+  {
+    "id": "INC-0291",
+    "linea": "L2",
+    "tipo": "averia",
+    "desde": "2026-11-09T08:10",
+    "hasta": "2026-11-09T08:55",
+    "tramo": ["SMD", "HGE"],
+    "descripcion": "Avería de un tren entre Sant Martí de Dalt y Hospital General. Retrasos de hasta 45 minutos.",
+    "alternativa": "Autobús 22 entre Parc del Riu y Hospital General."
+  },
+  {
+    "id": "INC-0294",
+    "linea": "L2",
+    "tipo": "accesibilidad",
+    "desde": "2026-11-02T05:00",
+    "hasta": "2026-11-27T24:00",
+    "tramo": ["HGE"],
+    "descripcion": "Uno de los dos ascensores de Hospital General está fuera de servicio por sustitución. El otro funciona con normalidad.",
+    "alternativa": null
+  },
+  {
+    "id": "INC-0297",
+    "linea": "L4",
+    "tipo": "huelga",
+    "desde": "2026-11-05T05:00",
+    "hasta": "2026-11-05T24:00",
+    "tramo": [],
+    "descripcion": "Huelga parcial. Servicios mínimos del 60 % en hora punta y del 40 % el resto del día.",
+    "alternativa": null
+  },
+  {
+    "id": "INC-0301",
+    "linea": "L3",
+    "tipo": "obras",
+    "desde": "2026-11-12T05:00",
+    "hasta": "2026-11-12T24:00",
+    "tramo": ["RFL", "UNI", "FON"],
+    "descripcion": "Obras de renovación de vía. Sin servicio entre Rambla de les Flors y Les Fonts durante todo el día.",
+    "alternativa": "Autobús lanzadera L3 cada 6 minutos entre Rambla de les Flors y Les Fonts, con parada en Universitat."
+  },
+  {
+    "id": "INC-0305",
+    "linea": "L1",
+    "tipo": "obras",
+    "desde": "2026-11-18T22:00",
+    "hasta": "2026-11-19T24:00",
+    "tramo": ["CRI", "TAL"],
+    "descripcion": "Cierre anticipado a las 22:00 entre Can Riera y Turó Alt por mantenimiento de catenaria.",
+    "alternativa": "Autobús N1 desde Universitat."
+  },
+  {
+    "id": "INC-0308",
+    "linea": "L3",
+    "tipo": "evento",
+    "desde": "2026-11-17T17:00",
+    "hasta": "2026-11-17T21:00",
+    "tramo": ["PMA"],
+    "descripcion": "La estación Plaça Major permanece cerrada por una concentración autorizada. Los trenes pasan sin parar.",
+    "alternativa": "Usar Rambla de les Flors o Passeig Marítim."
+  },
+  {
+    "id": "INC-0311",
+    "linea": "L1",
+    "tipo": "obras",
+    "desde": "2026-11-21T05:00",
+    "hasta": "2026-11-22T24:00",
+    "tramo": ["PVI", "DRV", "PMA"],
+    "descripcion": "Fin de semana sin servicio entre Port de Vilaverda y Plaça Major por obras de impermeabilización.",
+    "alternativa": "Autobús lanzadera L1 entre Port de Vilaverda y Plaça Major."
+  }
+]

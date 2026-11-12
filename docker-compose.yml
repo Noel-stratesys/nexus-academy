@@ -1,0 +1,169 @@
+# Servicios locales del academy: Langfuse (web, worker y sus almacenes).
+#
+#   docker compose up -d                      → Langfuse en http://localhost:3100
+#   docker compose --profile modelo-local up -d  → además, un servidor de modelos local
+#
+# Las credenciales son de laboratorio: el proyecto, sus claves y el usuario se crean
+# solos al arrancar (variables LANGFUSE_INIT_*), así que nadie tiene que copiarlas de la UI.
+# Los puertos internos no se publican en el host para no chocar con otros Langfuse locales.
+name: nexus-academy
+
+x-langfuse-env: &langfuse-env
+  NEXTAUTH_URL: http://localhost:3100
+  DATABASE_URL: postgresql://postgres:postgres@postgres:5432/postgres
+  SALT: nexus-academy-salt
+  ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+  TELEMETRY_ENABLED: "false"
+  CLICKHOUSE_MIGRATION_URL: clickhouse://clickhouse:9000
+  CLICKHOUSE_URL: http://clickhouse:8123
+  CLICKHOUSE_USER: clickhouse
+  CLICKHOUSE_PASSWORD: clickhouse
+  CLICKHOUSE_CLUSTER_ENABLED: "false"
+  LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+  LANGFUSE_S3_EVENT_UPLOAD_REGION: auto
+  LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: minio
+  LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: miniosecret
+  LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://minio:9000
+  LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+  LANGFUSE_S3_EVENT_UPLOAD_PREFIX: events/
+  LANGFUSE_S3_MEDIA_UPLOAD_BUCKET: langfuse
+  LANGFUSE_S3_MEDIA_UPLOAD_REGION: auto
+  LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID: minio
+  LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY: miniosecret
+  LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: http://localhost:9190
+  LANGFUSE_S3_MEDIA_UPLOAD_INTERNAL_ENDPOINT: http://minio:9000
+  LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE: "true"
+  LANGFUSE_S3_MEDIA_UPLOAD_PREFIX: media/
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  REDIS_AUTH: myredissecret
+  # Langfuse v4: escritura en la tabla de eventos y OTEL nativo.
+  LANGFUSE_MIGRATION_V4_WRITE_MODE: events_only
+  LANGFUSE_MIGRATION_V4_NATIVE_OTEL_BEHAVIOUR: direct
+  LANGFUSE_MIGRATION_V4_ALLOW_PREVIEW_OPT_IN: "true"
+  LANGFUSE_BACKGROUND_MIGRATION_V4_ENABLE_HISTORIC_BACKFILL: "false"
+  # Hosts a los que Langfuse puede llamar como conexión LLM (juez, Playground).
+  LANGFUSE_LLM_CONNECTION_WHITELISTED_HOST: ${LANGFUSE_LLM_CONNECTION_WHITELISTED_HOST:-modelos,host.docker.internal}
+
+x-depends: &langfuse-depends
+  postgres:
+    condition: service_healthy
+  minio:
+    condition: service_healthy
+  redis:
+    condition: service_healthy
+  clickhouse:
+    condition: service_healthy
+
+services:
+  langfuse-worker:
+    image: docker.io/langfuse/langfuse-worker:4.70.1
+    restart: unless-stopped
+    depends_on: *langfuse-depends
+    environment:
+      <<: *langfuse-env
+
+  langfuse-web:
+    image: docker.io/langfuse/langfuse:4.70.1
+    restart: unless-stopped
+    depends_on: *langfuse-depends
+    ports:
+      - "3100:3000"
+    environment:
+      <<: *langfuse-env
+      NEXTAUTH_SECRET: nexus-academy-secret
+      LANGFUSE_INIT_ORG_ID: metro-vilaverda
+      LANGFUSE_INIT_ORG_NAME: Metro de Vilaverda
+      LANGFUSE_INIT_PROJECT_ID: nexus
+      LANGFUSE_INIT_PROJECT_NAME: Nexus
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-pk-lf-nexus-academy}
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-sk-lf-nexus-academy}
+      LANGFUSE_INIT_USER_EMAIL: ${LANGFUSE_INIT_USER_EMAIL:-equipo@metrovilaverda.test}
+      LANGFUSE_INIT_USER_NAME: Equipo IA
+      LANGFUSE_INIT_USER_PASSWORD: ${LANGFUSE_INIT_USER_PASSWORD:-academy-password}
+
+  clickhouse:
+    image: docker.io/clickhouse/clickhouse-server:26.6
+    restart: unless-stopped
+    user: "101:101"
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: clickhouse
+      CLICKHOUSE_PASSWORD: clickhouse
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - clickhouse_logs:/var/log/clickhouse-server
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 1s
+
+  minio:
+    image: cgr.dev/chainguard/minio
+    restart: unless-stopped
+    entrypoint: sh
+    command: -c 'mkdir -p /data/langfuse && minio server --address ":9000" --console-address ":9001" /data'
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: miniosecret
+    ports:
+      # El navegador descarga desde aquí los adjuntos de las trazas.
+      - "127.0.0.1:9190:9000"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 1s
+      timeout: 5s
+      retries: 5
+      start_period: 1s
+
+  redis:
+    image: docker.io/redis:7
+    restart: unless-stopped
+    command: --requirepass myredissecret --maxmemory-policy noeviction
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "myredissecret", "ping"]
+      interval: 3s
+      timeout: 10s
+      retries: 10
+
+  postgres:
+    image: docker.io/postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+      TZ: UTC
+      PGTZ: UTC
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  # Servidor de modelos opcional (perfil "modelo-local"), accesible desde Langfuse como
+  # http://modelos:11434/v1 y desde el host como http://localhost:11500.
+  modelos:
+    image: docker.io/ollama/ollama
+    profiles: ["modelo-local"]
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:11500:11434"
+    volumes:
+      - modelos_data:/root/.ollama
+
+volumes:
+  postgres_data:
+  clickhouse_data:
+  clickhouse_logs:
+  minio_data:
+  redis_data:
+  modelos_data:

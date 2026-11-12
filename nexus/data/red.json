@@ -1,0 +1,48 @@
+{
+  "lineas": {
+    "L1": {
+      "nombre": "L1 Roja",
+      "minutos_entre_estaciones": 2,
+      "estaciones": ["PVI", "DRV", "PMA", "ECE", "MNO", "UNI", "CRI", "TAL"]
+    },
+    "L2": {
+      "nombre": "L2 Verde",
+      "minutos_entre_estaciones": 3,
+      "estaciones": ["PRI", "SMD", "FVE", "ECE", "HGE", "CAG", "AER"]
+    },
+    "L3": {
+      "nombre": "L3 Amarilla",
+      "minutos_entre_estaciones": 2,
+      "estaciones": ["PLL", "PMR", "PMA", "RFL", "UNI", "FON", "MIR"]
+    },
+    "L4": {
+      "nombre": "L4 Azul",
+      "minutos_entre_estaciones": 3,
+      "estaciones": ["PSU", "FIR", "HGE", "MNO", "RFL", "TBL"]
+    }
+  },
+  "estaciones": {
+    "PVI": {"nombre": "Port de Vilaverda", "zona": 1, "accesible": true, "ascensores": 2},
+    "DRV": {"nombre": "Drassanes Velles", "zona": 1, "accesible": false, "ascensores": 0},
+    "PMA": {"nombre": "Plaça Major", "zona": 1, "accesible": true, "ascensores": 3},
+    "ECE": {"nombre": "Estació Central", "zona": 1, "accesible": true, "ascensores": 4},
+    "MNO": {"nombre": "Mercat Nou", "zona": 1, "accesible": true, "ascensores": 2},
+    "UNI": {"nombre": "Universitat", "zona": 1, "accesible": true, "ascensores": 2},
+    "CRI": {"nombre": "Can Riera", "zona": 1, "accesible": false, "ascensores": 0},
+    "TAL": {"nombre": "Turó Alt", "zona": 2, "accesible": true, "ascensores": 1},
+    "PRI": {"nombre": "Parc del Riu", "zona": 1, "accesible": true, "ascensores": 1},
+    "SMD": {"nombre": "Sant Martí de Dalt", "zona": 1, "accesible": true, "ascensores": 1},
+    "FVE": {"nombre": "Fàbrica Vella", "zona": 1, "accesible": false, "ascensores": 0},
+    "HGE": {"nombre": "Hospital General", "zona": 1, "accesible": true, "ascensores": 2},
+    "CAG": {"nombre": "Camp de l'Àliga", "zona": 2, "accesible": true, "ascensores": 1},
+    "AER": {"nombre": "Aeroport", "zona": 3, "accesible": true, "ascensores": 4},
+    "PLL": {"nombre": "Platja Llarga", "zona": 1, "accesible": true, "ascensores": 1},
+    "PMR": {"nombre": "Passeig Marítim", "zona": 1, "accesible": true, "ascensores": 1},
+    "RFL": {"nombre": "Rambla de les Flors", "zona": 1, "accesible": true, "ascensores": 2},
+    "FON": {"nombre": "Les Fonts", "zona": 1, "accesible": false, "ascensores": 0},
+    "MIR": {"nombre": "Mirador", "zona": 2, "accesible": true, "ascensores": 1},
+    "PSU": {"nombre": "Polígon Sud", "zona": 2, "accesible": true, "ascensores": 1},
+    "FIR": {"nombre": "Fira de Vilaverda", "zona": 1, "accesible": true, "ascensores": 2},
+    "TBL": {"nombre": "Torre Blava", "zona": 1, "accesible": true, "ascensores": 1}
+  }
+}

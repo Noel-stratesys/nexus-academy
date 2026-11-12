@@ -1,0 +1,62 @@
+{
+  "nota": "Horas en formato HH:MM desde la estación de origen de cada línea. Un cierre posterior a 24:00 es de madrugada del día siguiente.",
+  "tipos_dia": {
+    "laborable": {
+      "descripcion": "De lunes a jueves no festivos",
+      "apertura": "05:00",
+      "cierre": "24:00",
+      "franjas": [
+        {"desde": "05:00", "hasta": "07:00", "frecuencia_min": 6},
+        {"desde": "07:00", "hasta": "09:30", "frecuencia_min": 3},
+        {"desde": "09:30", "hasta": "17:00", "frecuencia_min": 5},
+        {"desde": "17:00", "hasta": "20:00", "frecuencia_min": 3},
+        {"desde": "20:00", "hasta": "24:00", "frecuencia_min": 8}
+      ]
+    },
+    "viernes": {
+      "descripcion": "Viernes y vísperas de festivo",
+      "apertura": "05:00",
+      "cierre": "26:00",
+      "franjas": [
+        {"desde": "05:00", "hasta": "07:00", "frecuencia_min": 6},
+        {"desde": "07:00", "hasta": "09:30", "frecuencia_min": 3},
+        {"desde": "09:30", "hasta": "17:00", "frecuencia_min": 5},
+        {"desde": "17:00", "hasta": "20:00", "frecuencia_min": 3},
+        {"desde": "20:00", "hasta": "26:00", "frecuencia_min": 8}
+      ]
+    },
+    "sabado": {
+      "descripcion": "Sábados no festivos",
+      "apertura": "05:00",
+      "cierre": "26:00",
+      "franjas": [
+        {"desde": "05:00", "hasta": "10:00", "frecuencia_min": 8},
+        {"desde": "10:00", "hasta": "21:00", "frecuencia_min": 6},
+        {"desde": "21:00", "hasta": "26:00", "frecuencia_min": 8}
+      ]
+    },
+    "domingo_festivo": {
+      "descripcion": "Domingos y festivos",
+      "apertura": "06:00",
+      "cierre": "24:00",
+      "franjas": [
+        {"desde": "06:00", "hasta": "10:00", "frecuencia_min": 10},
+        {"desde": "10:00", "hasta": "21:00", "frecuencia_min": 8},
+        {"desde": "21:00", "hasta": "24:00", "frecuencia_min": 10}
+      ]
+    }
+  },
+  "servicio_nocturno": {
+    "descripcion": "La noche del sábado al domingo, L1 y L3 circulan sin interrupción cada 15 minutos entre el cierre del sábado y la apertura del domingo.",
+    "lineas": ["L1", "L3"],
+    "frecuencia_min": 15
+  },
+  "festivos": {
+    "2026-11-01": "Todos los Santos",
+    "2026-11-23": "Festa Major de Vilaverda",
+    "2026-12-06": "Día de la Constitución",
+    "2026-12-08": "Inmaculada Concepción",
+    "2026-12-25": "Navidad",
+    "2026-12-26": "Sant Esteve"
+  }
+}

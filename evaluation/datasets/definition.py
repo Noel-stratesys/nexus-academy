@@ -1,0 +1,72 @@
+"""Datasets definidos en el código y cómo se suben a Langfuse.
+
+Un dataset es una lista de casos. Cada caso tiene una entrada (lo que escribe el
+viajero), lo que esperamos (``expected``) y metadata para analizar los resultados por
+grupos: ``case_id``, ``categoria`` y ``particion``.
+
+La partición separa los casos con los que ajustamos (``development``) de los que
+guardamos para comprobar al final que no nos hemos sobreajustado (``holdout``).
+"""
+
+from dataclasses import dataclass, field
+from typing import Any, Literal
+from uuid import NAMESPACE_URL, uuid5
+
+Particion = Literal["development", "holdout"]
+
+
+@dataclass(frozen=True)
+class Case:
+    case_id: str
+    mensaje: str
+    expected: dict[str, Any]
+    categoria: str
+    viajero: str = "1001"
+    hoy: str = "2026-11-16"
+    particion: Particion = "development"
+    extra: dict[str, Any] = field(default_factory=dict)
+
+    def input(self) -> dict[str, Any]:
+        return {"mensaje": self.mensaje, "viajero": self.viajero, "hoy": self.hoy}
+
+    def metadata(self) -> dict[str, Any]:
+        return {
+            "case_id": self.case_id,
+            "categoria": self.categoria,
+            "particion": self.particion,
+            **self.extra,
+        }
+
+
+@dataclass(frozen=True)
+class DatasetDefinition:
+    name: str
+    description: str
+    # Qué parte de Nexus ejecuta un experimento sobre este dataset.
+    target: Literal["orchestrator", "agent"]
+    cases: list[Case]
+
+    def item_id(self, case: Case) -> str:
+        """Id estable por caso: volver a subir el dataset actualiza, no duplica."""
+
+        return str(uuid5(NAMESPACE_URL, f"{self.name}/{case.case_id}"))
+
+
+def upload(definition: DatasetDefinition, langfuse: Any) -> int:
+    """Crea el dataset (o lo actualiza) con todos sus casos."""
+
+    langfuse.create_dataset(
+        name=definition.name,
+        description=definition.description,
+        metadata={"target": definition.target, "casos": len(definition.cases)},
+    )
+    for case in definition.cases:
+        langfuse.create_dataset_item(
+            dataset_name=definition.name,
+            id=definition.item_id(case),
+            input=case.input(),
+            expected_output=case.expected,
+            metadata=case.metadata(),
+        )
+    langfuse.flush()
+    return len(definition.cases)

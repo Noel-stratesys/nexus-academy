@@ -1,0 +1,35 @@
+{
+  "moneda": "EUR",
+  "titulos": {
+    "senzill": {
+      "nombre": "Billete sencillo",
+      "descripcion": "Un viaje, con transbordos durante 75 minutos.",
+      "precios": {"1": 2.6, "2": 3.4, "3": 4.3}
+    },
+    "t10": {
+      "nombre": "T-10",
+      "descripcion": "10 viajes, multipersonal, con transbordos durante 75 minutos.",
+      "precios": {"1": 12.2, "2": 23.1, "3": 31.4}
+    },
+    "tmes": {
+      "nombre": "T-Mes",
+      "descripcion": "Viajes ilimitados durante 30 días naturales. Personal e intransferible.",
+      "precios": {"1": 24.0, "2": 41.5, "3": 56.0}
+    },
+    "tjove": {
+      "nombre": "T-Jove",
+      "descripcion": "Viajes ilimitados durante 90 días para menores de 26 años. Personal.",
+      "precios": {"1": 45.0, "2": 45.0, "3": 45.0}
+    },
+    "tturista": {
+      "nombre": "T-Turista",
+      "descripcion": "Viajes ilimitados durante 48 o 72 horas en todas las zonas, incluido el Aeroport.",
+      "precios": {"48h": 17.5, "72h": 24.0}
+    },
+    "aeroport": {
+      "nombre": "Billete Aeroport",
+      "descripcion": "Un viaje con origen o destino Aeroport desde cualquier zona. Los títulos T-10 y T-Mes no son válidos en Aeroport.",
+      "precios": {"unico": 5.9}
+    }
+  }
+}

@@ -1,0 +1,11 @@
+[
+  {"id": "OBJ-5521", "descripcion": "Paraguas negro plegable", "linea": "L1", "estacion": "ECE", "fecha": "2026-11-02"},
+  {"id": "OBJ-5530", "descripcion": "Mochila azul con portátil", "linea": "L2", "estacion": "HGE", "fecha": "2026-11-04"},
+  {"id": "OBJ-5534", "descripcion": "Cartera marrón de piel con DNI", "linea": "L3", "estacion": "PMA", "fecha": "2026-11-06"},
+  {"id": "OBJ-5541", "descripcion": "Auriculares inalámbricos blancos en estuche", "linea": "L4", "estacion": "MNO", "fecha": "2026-11-09"},
+  {"id": "OBJ-5547", "descripcion": "Bufanda roja de lana", "linea": "L1", "estacion": "UNI", "fecha": "2026-11-10"},
+  {"id": "OBJ-5552", "descripcion": "Libro 'Història de Vilaverda' con funda verde", "linea": "L3", "estacion": "RFL", "fecha": "2026-11-11"},
+  {"id": "OBJ-5560", "descripcion": "Llaves con llavero de un faro", "linea": "L2", "estacion": "AER", "fecha": "2026-11-13"},
+  {"id": "OBJ-5563", "descripcion": "Paraguas rojo grande", "linea": "L4", "estacion": "FIR", "fecha": "2026-11-14"},
+  {"id": "OBJ-5571", "descripcion": "Gafas de sol en funda negra", "linea": "L1", "estacion": "PVI", "fecha": "2026-11-15"}
+]
