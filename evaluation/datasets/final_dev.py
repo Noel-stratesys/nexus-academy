@@ -24,7 +24,7 @@ from functools import cache
 from pathlib import Path
 from typing import Any
 
-from evaluation.datasets.definition import Case, DatasetDefinition, Particion
+from evaluation.datasets.definition import Case, DatasetDefinition
 from nexus.data import estaciones, lineas, load
 
 DATOS_DIR = Path(__file__).resolve().parents[2] / "proyecto-final" / "datos"
@@ -164,9 +164,7 @@ def horario_asistencia(dia: date) -> tuple[int, int]:
     """Inicio y fin del servicio de asistencia ese día, en minutos."""
 
     franjas = datos("asistencia")["horario"]
-    clave = (
-        "sabado_domingo_festivo" if dia.weekday() >= 5 or es_festivo(dia) else "lunes_a_viernes"
-    )
+    clave = "sabado_domingo_festivo" if dia.weekday() >= 5 or es_festivo(dia) else "lunes_a_viernes"
     return _minutos(franjas[clave]["desde"]), _minutos(franjas[clave]["hasta"])
 
 
@@ -218,7 +216,6 @@ def _case(
     responde: bool | None = None,
     viajero: str = "1001",
     hoy: date = HOY,
-    particion: Particion = "development",
     idioma: str = "es",
     extra: dict[str, Any] | None = None,
 ) -> Case:
@@ -238,7 +235,6 @@ def _case(
         categoria,
         viajero=viajero,
         hoy=hoy.isoformat(),
-        particion=particion,
         extra={"idioma": idioma, **(extra or {})},
     )
 
@@ -342,7 +338,6 @@ CASES = [
         menciona=["Friday|Saturday|weekend"],
         viajero="1008",
         idioma="en",
-        particion="holdout",
         extra={"no_circula": {"linea": "N3", "noche": _MARTES.isoformat()}},
     ),
     _case(
@@ -365,7 +360,6 @@ CASES = [
         "bus_nocturno",
         tools=[BUS],
         menciona=[paso_por_parada("N1", "UNI", "TAL", HOY)[0]],
-        particion="holdout",
     ),
     # --- ascensores -----------------------------------------------------------
     _case(
@@ -399,7 +393,6 @@ CASES = [
         "ascensores",
         tools=[ASCENSORES],
         menciona=["|".join(alternativas("MIR", _MIERCOLES)), vuelve_a_funcionar("MIR", _MIERCOLES)],
-        particion="holdout",
     ),
     # --- normativa: con respuesta ---------------------------------------------
     _case(
@@ -440,7 +433,6 @@ CASES = [
         responde=True,
         viajero="1019",
         idioma="en",
-        particion="holdout",
     ),
     # --- normativa: sin respuesta (debe abstenerse) ---------------------------
     _case(
@@ -475,7 +467,6 @@ CASES = [
         tools=[NORMATIVA],
         prohibidas=[RESERVA],
         responde=False,
-        particion="holdout",
     ),
     # --- reservas que proceden ------------------------------------------------
     reserva(
@@ -529,7 +520,6 @@ CASES = [
         origen="TBL",
         destino="PRI",
         viajero="1024",
-        particion="holdout",
     ),
     reserva(
         "fd-24",
@@ -541,7 +531,6 @@ CASES = [
         destino="UNI",
         viajero="1018",
         idioma="ca",
-        particion="holdout",
     ),
     # --- reservas que no proceden ---------------------------------------------
     reserva(
@@ -594,7 +583,6 @@ CASES = [
         origen="HGE",
         destino="UNI",
         viajero="1026",
-        particion="holdout",
     ),
     reserva(
         "fd-30",
@@ -605,7 +593,6 @@ CASES = [
         origen="PLL",
         destino="ECE",
         viajero="1041",
-        particion="holdout",
     ),
 ]
 
@@ -613,7 +600,7 @@ DATASET = DatasetDefinition(
     name="nexus/final-dev",
     description=(
         "Proyecto final: bus nocturno N1–N3, ascensores y servicio de asistencia. 30 casos "
-        "(21 de development y 9 de holdout) en castellano, catalán e inglés. Equilibrado: "
+        "en castellano, catalán e inglés. Equilibrado: "
         "6 reservas que proceden y 6 que no; 4 preguntas de normativa con respuesta y 4 "
         "sin respuesta."
     ),

@@ -56,7 +56,6 @@ CASES = [
         "horarios",
         tools=["consultar_horario"],
         menciona=["6 min"],
-        particion="holdout",
     ),
     _case(
         "ag-04",
@@ -101,7 +100,6 @@ CASES = [
         "incidencias",
         tools=["consultar_incidencias"],
         menciona=["Plaça Major"],
-        particion="holdout",
     ),
     _case(
         "ag-10",
@@ -131,7 +129,6 @@ CASES = [
         "tarifas",
         tools=["consultar_tarifas|buscar_normativa"],
         menciona=["T-Jove"],
-        particion="holdout",
     ),
     # --- normativa ------------------------------------------------------------
     _case(
@@ -161,7 +158,6 @@ CASES = [
         "normativa",
         tools=["buscar_normativa"],
         menciona=["plega|plegable"],
-        particion="holdout",
     ),
     # --- objetos perdidos -----------------------------------------------------
     _case(
@@ -193,7 +189,6 @@ CASES = [
         "acciones",
         tools=["abrir_reclamacion"],
         aprobacion=True,
-        particion="holdout",
     ),
     _case(
         "ag-22",
@@ -225,7 +220,6 @@ CASES = [
         "devoluciones",
         prohibidas=["solicitar_devolucion"],
         menciona=["30 min"],
-        particion="holdout",
     ),
 ]
 

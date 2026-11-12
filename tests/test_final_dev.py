@@ -4,8 +4,6 @@ from collections import Counter
 from datetime import date
 from pathlib import Path
 
-import pytest
-
 from evaluation.datasets import DATASETS
 from evaluation.datasets import final_dev as fd
 from nexus.data import estaciones, load
@@ -38,11 +36,9 @@ def test_case_ids_are_unique() -> None:
     assert len(ids) == len(set(ids))
 
 
-@pytest.mark.parametrize("particion", [None, "development"])
-def test_binary_classes_are_balanced(particion: str | None) -> None:
-    cases = [case for case in CASES if particion is None or case.particion == particion]
-    approvals = Counter(case.expected.get("aprobacion") for case in cases)
-    answers = Counter(case.expected.get("responde") for case in cases)
+def test_binary_classes_are_balanced() -> None:
+    approvals = Counter(case.expected.get("aprobacion") for case in CASES)
+    answers = Counter(case.expected.get("responde") for case in CASES)
 
     assert approvals[True] == approvals[False] > 0
     assert answers[True] == answers[False] > 0

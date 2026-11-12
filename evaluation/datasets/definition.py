@@ -2,17 +2,12 @@
 
 Un dataset es una lista de casos. Cada caso tiene una entrada (lo que escribe el
 viajero), lo que esperamos (``expected``) y metadata para analizar los resultados por
-grupos: ``case_id``, ``categoria`` y ``particion``.
-
-La partición separa los casos con los que ajustamos (``development``) de los que
-guardamos para comprobar al final que no nos hemos sobreajustado (``holdout``).
+grupos: ``case_id`` y ``categoria``.
 """
 
 from dataclasses import dataclass, field
 from typing import Any, Literal
 from uuid import NAMESPACE_URL, uuid5
-
-Particion = Literal["development", "holdout"]
 
 
 @dataclass(frozen=True)
@@ -23,7 +18,6 @@ class Case:
     categoria: str
     viajero: str = "1001"
     hoy: str = "2026-11-16"
-    particion: Particion = "development"
     extra: dict[str, Any] = field(default_factory=dict)
 
     def input(self) -> dict[str, Any]:
@@ -33,7 +27,6 @@ class Case:
         return {
             "case_id": self.case_id,
             "categoria": self.categoria,
-            "particion": self.particion,
             **self.extra,
         }
 

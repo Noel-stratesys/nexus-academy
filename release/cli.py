@@ -283,7 +283,6 @@ def _parser() -> argparse.ArgumentParser:
     gate_cmd = commands.add_parser("gate", help="La puerta: experimento sobre green.")
     gate_cmd.add_argument("--repeat", type=int, help="Repite el experimento N veces.")
     gate_cmd.add_argument("--concurrencia", type=int, help="Casos a la vez.")
-    gate_cmd.add_argument("--particion", choices=("development", "holdout", "todas"))
     shift_cmd = commands.add_parser("shift", help="Porcentaje de viajeros que van a green.")
     shift_cmd.add_argument("percent", type=int, metavar="PORCENTAJE", help="De 0 a 100.")
     shift_cmd.add_argument("--forzar", action="store_true", help="Sin haber pasado la puerta.")
@@ -308,7 +307,7 @@ def release(argv: list[str] | None = None) -> None:
         case "gate":
             extra = [
                 f"--{name}={value}"
-                for name in ("repeat", "concurrencia", "particion")
+                for name in ("repeat", "concurrencia")
                 if (value := getattr(args, name)) is not None
             ]
             gate(state, extra)

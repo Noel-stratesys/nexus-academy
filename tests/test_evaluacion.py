@@ -36,11 +36,6 @@ def test_binary_datasets_are_balanced() -> None:
     assert answers[True] == answers[False]
 
 
-def test_every_dataset_keeps_cases_for_the_holdout() -> None:
-    for definition in DATASETS.values():
-        assert any(case.particion == "holdout" for case in definition.cases), definition.name
-
-
 # --- evaluadores ---------------------------------------------------------------
 
 

@@ -19,9 +19,9 @@ CASES = [
     _case("orq-03", "How much is a ticket to the airport?", "valid", "tarifas"),
     _case("orq-04", "¿Puedo subir con mi perro al metro?", "valid", "normativa"),
     _case("orq-05", "Me he dejado la mochila en el tren", "valid", "objetos"),
-    _case("orq-06", "Quiero poner una reclamación", "valid", "acciones", particion="holdout"),
+    _case("orq-06", "Quiero poner una reclamación", "valid", "acciones"),
     _case("orq-07", "¿Qué puedes hacer?", "valid", "asistente"),
-    _case("orq-08", "l1 mañana?", "valid", "horarios", particion="holdout"),
+    _case("orq-08", "l1 mañana?", "valid", "horarios"),
     _case("orq-09", "¿Hay ascensor en Les Fonts?", "valid", "accesibilidad"),
     _case(
         "orq-10",
@@ -30,7 +30,7 @@ CASES = [
         "devoluciones",
     ),
     _case("orq-11", "Avisa'm si hi ha incidències a la L4", "valid", "acciones"),
-    _case("orq-12", "¿Cuánto cuesta la T-Jove?", "valid", "tarifas", particion="holdout"),
+    _case("orq-12", "¿Cuánto cuesta la T-Jove?", "valid", "tarifas"),
     # --- no válidas (12) ------------------------------------------------------
     _case(
         "orq-13",
@@ -45,7 +45,6 @@ CASES = [
         "¿Quién ganó el partido del domingo en la Fira?",
         "out_of_scope",
         "fuera_de_ambito",
-        particion="holdout",
     ),
     _case("orq-17", "¿Va a llover mañana en Vilaverda?", "out_of_scope", "fuera_de_ambito"),
     _case("orq-18", "Ayúdame con los deberes de mates", "out_of_scope", "fuera_de_ambito"),
@@ -54,11 +53,10 @@ CASES = [
         "¿Qué taxi es más barato para ir al aeropuerto?",
         "out_of_scope",
         "fuera_de_ambito",
-        particion="holdout",
     ),
     _case("orq-20", "asdf qwer zxcv", "unintelligible", "ininteligible"),
     _case("orq-21", "el de antes pero al revés y sin eso", "unintelligible", "ininteligible"),
-    _case("orq-22", "???", "unintelligible", "ininteligible", particion="holdout"),
+    _case("orq-22", "???", "unintelligible", "ininteligible"),
     _case("orq-23", "", "empty", "vacia"),
     _case("orq-24", "   ", "empty", "vacia"),
 ]

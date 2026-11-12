@@ -52,12 +52,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Compara las medias con la puerta de release.toml; sale con error si no pasa.",
     )
     parser.add_argument(
-        "--particion",
-        choices=("development", "holdout", "todas"),
-        default="development",
-        help="Qué casos usar. El holdout se reserva para la comprobación final.",
-    )
-    parser.add_argument(
         "--repeat", type=int, default=1, help="Repite el experimento N veces para ver el ruido."
     )
     parser.add_argument(
@@ -201,13 +195,9 @@ def run(args: argparse.Namespace) -> list[dict[str, float]]:
         flags=flags,
     )
     dataset = langfuse.get_dataset(definition.name)
-    items = [
-        item
-        for item in dataset.items
-        if args.particion == "todas" or (item.metadata or {}).get("particion") == args.particion
-    ]
+    items = list(dataset.items)
     if not items:
-        sys.exit(f"No hay casos en {definition.name} para la partición {args.particion}.")
+        sys.exit(f"El dataset {definition.name} no tiene casos. Súbelo con: uv run dataset")
 
     metadata = {
         "label": label,
@@ -217,9 +207,8 @@ def run(args: argparse.Namespace) -> list[dict[str, float]]:
         "executor": run_settings.models.executor.model,
         "rag": run_settings.rag.model_dump_json(),
         "flags": ", ".join(sorted(run_settings.flags)) or "-",
-        "particion": args.particion,
     }
-    print(f"Experimento sobre {definition.name}: {len(items)} casos ({args.particion}).")
+    print(f"Experimento sobre {definition.name}: {len(items)} casos.")
     for key, value in metadata.items():
         print(f"  {key}: {value}")
 
