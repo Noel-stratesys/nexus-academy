@@ -1,4 +1,7 @@
-"""Tests de los datasets, los evaluadores y el cálculo de concordancia."""
+"""Tests de los datasets, los evaluadores y el cálculo de concordancia.
+
+Los evaluadores que se completan en los capítulos 3 y 4 los comprueba ``uv run check``.
+"""
 
 from collections import Counter
 from typing import Any
@@ -39,21 +42,6 @@ def test_binary_datasets_are_balanced() -> None:
 # --- evaluadores ---------------------------------------------------------------
 
 
-def test_veredicto_correcto() -> None:
-    expected = {"verdict": "valid"}
-
-    assert _value(ev.veredicto_correcto(output={"verdict": "valid"}, expected_output=expected)) == 1
-    assert _value(ev.veredicto_correcto(output={"verdict": "empty"}, expected_output=expected)) == 0
-    assert ev.veredicto_correcto(output={}, expected_output={}) == []
-
-
-def test_usa_tools_esperadas_accepts_alternatives() -> None:
-    output = {"tools": [{"name": "buscar_normativa", "args": {}}]}
-    expected = {"tools": ["consultar_tarifas|buscar_normativa", "consultar_horario"]}
-
-    assert _value(ev.usa_tools_esperadas(output=output, expected_output=expected)) == 0.5
-
-
 def test_evita_tools_prohibidas_counts_proposed_actions() -> None:
     expected = {"prohibidas": ["solicitar_devolucion"]}
     proposed = {"tools": [], "aprobaciones": ["solicitar_devolucion"]}
@@ -70,29 +58,13 @@ def test_menciona_datos_ignores_accents_and_case() -> None:
     assert _value(result) == 1
 
 
-def test_rag_evaluators() -> None:
+def test_precision_recuperacion() -> None:
     output: dict[str, Any] = {
-        "respuesta": "Sí, en cualquier horario.",
         "fragmentos": ["normativa-viajeros-2024#250-0", "guia-bicicletas-y-patinetes#250-0"],
     }
-    expected = {
-        "responde": True,
-        "docs": ["normativa-viajeros-2026", "guia-bicicletas-y-patinetes"],
-    }
+    expected = {"docs": ["normativa-viajeros-2026", "guia-bicicletas-y-patinetes"]}
 
-    assert _value(ev.recupera_documento(output=output, expected_output=expected)) == 1
     assert _value(ev.precision_recuperacion(output=output, expected_output=expected)) == 0.5
-    assert _value(ev.recupera_derogada(output=output)) == 1
-    assert _value(ev.abstencion_correcta(output=output, expected_output=expected)) == 1
-
-
-def test_abstencion_correcta_rewards_saying_there_is_no_answer() -> None:
-    expected = {"responde": False}
-    abstains = {"respuesta": "No consta en la normativa si hay descuento para jubilados."}
-    invents = {"respuesta": "Sí, los jubilados tienen un 50 % de descuento."}
-
-    assert _value(ev.abstencion_correcta(output=abstains, expected_output=expected)) == 1
-    assert _value(ev.abstencion_correcta(output=invents, expected_output=expected)) == 0
 
 
 def test_averages_by_score_name() -> None:

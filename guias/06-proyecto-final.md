@@ -82,7 +82,8 @@ funcionando igual. Es así como evaluamos tu entrega.
 ## Cómo se evalúa
 
 Ejecutamos tu Nexus sobre un **dataset oculto** con **los mismos evaluadores de hoy**
-(`evaluation/evaluators.py`) y hacemos un ranking con tres criterios:
+(los de `evaluation/evaluators.py`, en nuestra versión de referencia) y hacemos un ranking
+con tres criterios:
 
 - **Calidad:** la media de los evaluadores por caso. Un caso que termina con error vale 0.
 - **Tokens por conversación**, comparados con el mejor equipo.
@@ -95,8 +96,8 @@ pesos exactos se anuncian al empezar el proyecto.
 **Reglas:**
 
 - Solo puedes usar los modelos permitidos en el `.env` de referencia.
-- No se tocan los evaluadores (`evaluation/evaluators.py`) ni el dataset oculto. Las
-  entregas que modifican los evaluadores se detectan.
+- Puntuamos con nuestra versión de `evaluation/evaluators.py`, no con la de tu entrega:
+  cambiar los evaluadores no cambia tu nota.
 - Entrega: rama o zip al acabar los 95 minutos.
 
 > El dataset oculto se parece al visible, pero no es igual. Si ajustas solo a lo que
@@ -125,7 +126,6 @@ error típico es pasar 80 minutos programando y 0 evaluando.
 - [ ] Tienes al menos dos experimentos en Langfuse y sabes explicar qué decidiste con
   ellos.
 - [ ] Tu cuaderno recoge esos experimentos y lo que decidiste con cada uno.
-- [ ] No has tocado `evaluation/evaluators.py`.
 
 <details>
 <summary>Pista 1 · Nexus rechaza las preguntas del bus nocturno</summary>

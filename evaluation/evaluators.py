@@ -56,15 +56,15 @@ def sin_errores(*, output: dict[str, Any], **_: Any) -> Evaluation:
 def veredicto_correcto(
     *, output: dict[str, Any], expected_output: dict[str, Any], **_: Any
 ) -> Evaluation | list[Evaluation]:
-    expected = expected_output.get("verdict")
-    if expected is None:
-        return []
-    actual = output.get("verdict")
-    return Evaluation(
-        name="veredicto_correcto",
-        value=1 if actual == expected else 0,
-        comment=f"esperado {expected}, obtenido {actual}",
-    )
+    """1 si el veredicto del orquestador acierta y 0 si no.
+
+    - El veredicto de Nexus está en ``output["verdict"]`` y el esperado, en
+      ``expected_output["verdict"]``.
+    - Si el caso no tiene veredicto esperado, no hay nada que puntuar: devuelve ``[]``.
+    - Devuelve ``Evaluation(name="veredicto_correcto", value=...)``.
+    """
+
+    raise NotImplementedError("Completa veredicto_correcto: es la misión del capítulo 3.")
 
 
 # --- 2. Trayectoria: herramientas y aprobaciones -------------------------------
@@ -73,19 +73,17 @@ def veredicto_correcto(
 def usa_tools_esperadas(
     *, output: dict[str, Any], expected_output: dict[str, Any], **_: Any
 ) -> Evaluation | list[Evaluation]:
-    """Proporción de herramientas esperadas que se usaron (``a|b``: basta una)."""
+    """La proporción de herramientas esperadas que Nexus usó.
 
-    expected = expected_output.get("tools") or []
-    if not expected:
-        return []
-    used = _used_tools(output)
-    hits = [options for options in expected if used & set(options.split("|"))]
-    missing = [options for options in expected if options not in hits]
-    return Evaluation(
-        name="usa_tools_esperadas",
-        value=len(hits) / len(expected),
-        comment=f"faltan: {', '.join(missing)}" if missing else "todas usadas",
-    )
+    - Las esperadas están en ``expected_output["tools"]``. ``"a|b"`` se cumple con
+      cualquiera de las dos.
+    - Las que usó, en ``output["tools"]``: una lista de llamadas, cada una con su ``name``.
+    - Una de dos es 0,5. Usar herramientas de más no resta.
+    - Sin herramientas esperadas, devuelve ``[]``.
+    - Devuelve ``Evaluation(name="usa_tools_esperadas", value=...)``.
+    """
+
+    raise NotImplementedError("Completa usa_tools_esperadas: es la misión del capítulo 3.")
 
 
 def evita_tools_prohibidas(
@@ -174,17 +172,16 @@ def _current_docs() -> dict[str, bool]:
 def recupera_documento(
     *, output: dict[str, Any], expected_output: dict[str, Any], **_: Any
 ) -> Evaluation | list[Evaluation]:
-    """Hit: 1 si entre lo recuperado hay al menos un documento con la respuesta."""
+    """1 si algún fragmento recuperado viene de un documento esperado y 0 si no.
 
-    expected = set(expected_output.get("docs") or [])
-    if not expected:
-        return []
-    retrieved = set(_retrieved_docs(output))
-    return Evaluation(
-        name="recupera_documento",
-        value=1 if expected & retrieved else 0,
-        comment=f"recuperados: {', '.join(sorted(retrieved)) or 'ninguno'}",
-    )
+    - Los documentos esperados están en ``expected_output["docs"]``.
+    - Los fragmentos recuperados, en ``output["fragmentos"]``. Sus ids tienen la forma
+      ``doc_id#chunk``.
+    - Sin documentos esperados, devuelve ``[]``.
+    - Devuelve ``Evaluation(name="recupera_documento", value=...)``.
+    """
+
+    raise NotImplementedError("Completa recupera_documento: es la misión del capítulo 4.")
 
 
 def precision_recuperacion(
@@ -205,36 +202,32 @@ def precision_recuperacion(
 
 
 def recupera_derogada(*, output: dict[str, Any], **_: Any) -> Evaluation | list[Evaluation]:
-    """1 si algún fragmento recuperado viene de un documento que ya no está vigente."""
+    """1 si algún fragmento recuperado viene de un documento que ya no está vigente.
 
-    retrieved = _retrieved_docs(output)
-    if not retrieved:
-        return []
-    vigentes = _current_docs()
-    repealed = sorted({doc for doc in retrieved if not vigentes.get(doc, True)})
-    return Evaluation(
-        name="recupera_derogada",
-        value=1 if repealed else 0,
-        comment=f"derogados: {', '.join(repealed)}" if repealed else "todo vigente",
-    )
+    - Los fragmentos recuperados están en ``output["fragmentos"]``, con ids de la forma
+      ``doc_id#chunk``.
+    - Cada documento dice si está vigente en su campo ``vigente`` (``load_documents()``).
+    - Sin fragmentos, devuelve ``[]``.
+    - Devuelve ``Evaluation(name="recupera_derogada", value=...)``.
+    """
+
+    raise NotImplementedError("Completa recupera_derogada: es la misión del capítulo 4.")
 
 
 def abstencion_correcta(
     *, output: dict[str, Any], expected_output: dict[str, Any], **_: Any
 ) -> Evaluation | list[Evaluation]:
-    """Sin respuesta en la normativa, Nexus debe decirlo; con respuesta, debe darla."""
+    """1 si Nexus responde cuando hay respuesta y se abstiene cuando no la hay.
 
-    if "responde" not in expected_output:
-        return []
-    abstains = any(phrase in _plain(output.get("respuesta", "")) for phrase in ABSTENTION_PHRASES)
-    should_answer = bool(expected_output["responde"])
-    correct = abstains != should_answer
-    return Evaluation(
-        name="abstencion_correcta",
-        value=1 if correct else 0,
-        comment=("debía responder" if should_answer else "debía abstenerse")
-        + (", y lo hizo" if correct else ", y no lo hizo"),
-    )
+    - ``expected_output["responde"]`` dice si la normativa tiene la respuesta.
+    - Abstenerse es decir que no consta («no consta…», «no tengo información…»): las
+      frases están en ``ABSTENTION_PHRASES``. La respuesta de Nexus está en
+      ``output["respuesta"]``.
+    - Si el caso no dice si hay respuesta, devuelve ``[]``.
+    - Devuelve ``Evaluation(name="abstencion_correcta", value=...)``.
+    """
+
+    raise NotImplementedError("Completa abstencion_correcta: es la misión del capítulo 4.")
 
 
 # --- Qué evaluadores usa cada dataset -----------------------------------------
