@@ -65,14 +65,13 @@ su propia conexión con el proveedor: una **LLM Connection**. Se configura una v
 proyecto y la usarán también el juez del capítulo 3 y los evaluadores de la UI.
 
 1. Abre **Playground** en el menú de la izquierda. Mientras no haya ninguna conexión,
-
    Langfuse te avisa de que falta configurar un modelo:
-2. Pulsa **LLM Connection Settings** en el aviso (es lo mismo que **Settings → LLM
 
+   ![Aviso del Playground: no hay ninguna LLM Connection](img/01/00-playground-sin-conexion.png)
+2. Pulsa **LLM Connection Settings** en el aviso (es lo mismo que **Settings → LLM
    Connections**) y después **+ Organization Connection**. Una conexión de la
    organización sirve para todos sus proyectos; la de proyecto solo para Nexus.
 3. Rellena la primera parte del formulario. Groq acepta el mismo formato que la API de
-
    OpenAI, así que el adaptador es `openai`:
 
    | Campo | Valor |
@@ -81,8 +80,8 @@ proyecto y la usarán también el juez del capítulo 3 y los evaluadores de la U
    | Provider name | `groq` |
    | API Key | tu clave de Groq, la misma que `GROQ_API_KEY` en tu `.env` (empieza por `gsk_`) |
 
+   ![Formulario New LLM Connection: adaptador, nombre y clave](img/01/02-nueva-conexion.png)
 4. Pulsa **Show advanced settings** y rellena el resto. Sin la URL base, Langfuse
-
    llamaría a OpenAI con tu clave de Groq:
 
    | Campo | Valor |
@@ -92,10 +91,13 @@ proyecto y la usarán también el juez del capítulo 3 y los evaluadores de la U
    | Enable default models | desactivado: los modelos por defecto son los de OpenAI |
    | Custom models | `qwen/qwen3.8-27b` |
 
+   ![Opciones avanzadas: URL base de Groq y el modelo](img/01/03-nueva-conexion-avanzado.png)
 5. Pulsa **Create connection**.
 
    Qué esperar: la conexión `groq` aparece en **Organization connections**, con el
    adaptador OpenAI, la URL de Groq y solo los últimos caracteres de la clave.
+
+   ![La conexión groq creada](img/01/01-llm-connections.png)
 
 Si al usarla en el Playground sale un error de autenticación, revisa la clave; si sale un
 error de modelo, revisa que el nombre en **Custom models** es exactamente
@@ -113,15 +115,14 @@ prompt guardado. Se abren desde la página de cada versión, en **Prompts**, con
 versión.
 
 1. Ve a **Prompts → nexus/executor**, elige la **versión 1**, pulsa **Playground** y
-
    elige **Fresh playground**. Encima de los mensajes aparece `nexus/executor` con la
    versión que has cargado.
-2. Arriba, elige el modelo `groq: qwen/qwen3.8-27b`. Pon la **temperatura** de la
 
+   <!-- Captura pendiente: ![El botón Playground en la versión 1 de nexus/executor](img/01/04-prompt-playground.png) -->
+2. Arriba, elige el modelo `groq: qwen/qwen3.8-27b`. Pon la **temperatura** de la
    versión a mano: el Playground no la lee del `config` del prompt. Mírala en la pestaña
    **Config** de la versión.
 3. El prompt tiene tres **variables** entre llaves dobles, que Nexus rellena en cada
-
    conversación. En el Playground las rellenas tú, en **Variables**:
 
    | Variable | Valor para copiar |
@@ -130,6 +131,17 @@ versión.
    | `hoy` | `lunes 16 de noviembre de 2026` |
    | `tool_catalog` | el bloque de abajo |
 
+   ```text
+   - consultar_horario: Horario de una línea en una estación: primer tren, último tren y frecuencia.
+   - consultar_incidencias: Incidencias, obras y cortes de servicio de un día, de una línea o de toda la red.
+   - consultar_tarifas: Precios y condiciones de los títulos de transporte (sencillo, T-10, T-Mes...).
+   - buscar_normativa: Busca en la normativa y guías de MdV: bicicletas, patinetes, mascotas, equipaje, sanciones, devoluciones, reclamaciones, accesibilidad, títulos y objetos perdidos.
+   - buscar_objeto_perdido: Busca un objeto perdido entre los que se han encontrado en la red.
+   - abrir_reclamacion: Abre una reclamación a nombre del viajero. (requiere aprobación del viajero)
+   - solicitar_devolucion: Solicita la devolución del importe de un viaje. Solo si la normativa la permite. (requiere aprobación del viajero)
+   - suscribir_alertas: Suscribe al viajero a los avisos de incidencias de una línea. (requiere aprobación del viajero)
+   ```
+
 #### Dale al modelo una herramienta
 
 En el Playground el modelo no tiene herramientas: `tool_catalog` solo se las describe en
@@ -137,7 +149,6 @@ texto, y Langfuse no carga las herramientas de Nexus, porque viven en el código
 si el prompt consulta antes de responder, crea a mano `consultar_horario`.
 
 1. Pulsa **Tools → Create new tool** y rellena el formulario. Son los mismos datos que
-
    tiene la herramienta en `nexus/tools/horarios.py`:
 
    | Campo | Valor |
@@ -146,7 +157,23 @@ si el prompt consulta antes de responder, crea a mano `consultar_horario`.
    | Description | `Horario de una línea en una estación: primer tren, último tren y frecuencia.` |
    | Parameters (JSON Schema) | el bloque de abajo |
 
+   ```json
+   {
+     "type": "object",
+     "properties": {
+       "linea": { "type": "string", "description": "Línea, por ejemplo \"L1\"." },
+       "estacion": { "type": "string", "description": "Nombre o código de la estación, por ejemplo \"Plaça Major\"." },
+       "dia": { "type": "string", "description": "\"hoy\", \"mañana\", un día de la semana o una fecha AAAA-MM-DD." },
+       "hora": { "type": "string", "description": "Hora HH:MM para saber la frecuencia en ese momento (opcional)." }
+     },
+     "required": ["linea", "estacion", "dia"],
+     "additionalProperties": false
+   }
+   ```
+
+   Pulsa **Save**. Qué esperar: el botón **Tools** marca **1**.
 2. Pulsa **+ Message**, comprueba que el rol es **User** y escribe la pregunta de Laura:
+
    ```text
    ¿A qué hora pasa el primer tren de la L1 por Plaça Major mañana?
    ```
@@ -158,22 +185,28 @@ si el prompt consulta antes de responder, crea a mano `consultar_horario`.
 #### Pon la versión 2 al lado
 
 1. Pulsa **New split window**. Se abre una copia de la ventana, con el mismo prompt, el
-
    modelo, las variables, la herramienta y la pregunta.
 2. En la copia, cambia el mensaje **System** por el de la versión 2: cópialo de
-
    **Prompts → nexus/executor → versión 2**. Pon también su temperatura (pestaña
    **Config**). Ahora tienes la v1 a la izquierda y la v2 a la derecha.
+
+   <!-- Captura pendiente: ![El Playground con la v1 y la v2 lado a lado](img/01/05-playground-dos-ventanas.png) -->
 3. Pulsa **Run All**, arriba a la derecha, para lanzar las dos ventanas a la vez.
 
    Qué esperar: en el **Output** de cada ventana, o una tarjeta **Tool called** con
    `consultar_horario` y sus argumentos (`linea`, `estacion`, `dia`), o una respuesta en
    texto. Pulsa **Run All** dos o tres veces y apunta qué hace cada ventana cada vez.
 4. **Devuelve el resultado de la herramienta.** En cada ventana que la haya llamado,
-
    pulsa **+ Add to messages**, en la cabecera de **Output**. La llamada pasa a la
    conversación y debajo aparece un mensaje vacío para el resultado. Pega en él lo que
    habría devuelto Nexus:
+
+   ```json
+   {"linea": "L1", "estacion": "Plaça Major", "fecha": "martes 17 de noviembre de 2026", "tipo_dia": "De lunes a jueves no festivos", "primer_tren": "05:04", "ultimo_tren": "00:04", "desde_cabecera": "Port de Vilaverda"}
+   ```
+
+   Si el mensaje para el resultado no aparece, añádelo con la flecha **⌄** que hay junto
+   a **+ Message**.
 5. Pulsa **Run All** otra vez.
 
    Qué esperar: cada ventana que consultó la herramienta redacta la respuesta final para
@@ -189,22 +222,18 @@ opinión, no la de los viajeros. La segunda parte la pone a prueba.
 ### Segunda parte: lo que dicen los viajeros
 
 1. **¿Cuál gusta más?** Abre **Dashboards → «Prueba A/B del executor»** y pon un rango
-
    de fechas que incluya del 26 de octubre al 1 de noviembre de 2026. Compara las dos
    versiones en el total de valoraciones.
 2. **¿En qué?** Baja a la comparación **por categoría**. ¿Gana siempre la misma versión?
 
    ¿Cuántas valoraciones hay detrás de cada número?
 3. **¿Qué dicen?** En **Tracing**, filtra por la etiqueta (tag) de la categoría que más
-
    te llame la atención y abre conversaciones con 👎 de cada versión. El score
    `user_feedback` de cada traza lleva el comentario del viajero, si dejó uno.
 4. **¿Por qué?** En esas mismas trazas, recorre el árbol: ¿qué hizo Nexus antes de
-
    responder? Compáralo con conversaciones de la misma categoría de la otra versión. El
    resto del dashboard te ayuda a ver si lo que encuentras es un caso o la norma.
 5. **Mira las dos versiones.** En **Prompts → nexus/executor**, compara el texto y la
-
    pestaña **Config** de la versión 1 y la 2.
 
 Escribe tu diagnóstico en el cuaderno, en una frase: qué versión gusta más, en qué falla
@@ -216,7 +245,6 @@ y por qué. ¿Coincide con tu primera impresión del Playground?
    - Leer el prompt **por label** (el que devuelve `active_label()`)
    - En caso de fallar, pasa los mensajes del prompt del código (`PROMPTS_BY_NAME[name].messages`).
 2. Despliega la versión que elijas: **mueve el label** `production` a ella. No hace
-
    falta crear ninguna versión: las dos ya existen. Tienes dos formas:
    - **Desde la UI:** **Prompts → nexus/executor** → la versión elegida → edita sus labels
    y añade `production`.
@@ -246,31 +274,43 @@ caído y que la versión `production` del executor está lista para producción.
 vX porque en ‹categoría› ‹dato›, aunque en ‹otra categoría› ‹dato›».
 - Sabes qué no puede decirte el Playground y qué no puede decirte el 👍 de los viajeros.
 
-Pista 1 · No sé por dónde empezar a comparar
+<details>
+<summary>Pista 1 · No sé por dónde empezar a comparar</summary>
 
 Empieza por el total de valoraciones de cada versión. Después hazte la pregunta
 incómoda: ¿el total cuenta lo mismo en todas las categorías? ¿Pesan todas igual?
 
-Pista 2 · Ya sé en qué falla, pero no por qué
+</details>
+
+<details>
+<summary>Pista 2 · Ya sé en qué falla, pero no por qué</summary>
 
 Los comentarios te dicen qué notó el viajero; el árbol de la traza, qué hizo Nexus.
 Compara conversaciones de la misma categoría en las dos versiones: ¿qué pasos tiene una
 que no tenga la otra?
 
-Pista 3 · Las dos tienen algo bueno
+</details>
+
+<details>
+<summary>Pista 3 · Las dos tienen algo bueno</summary>
 
 Pon el texto de la v1 y el de la v2 uno al lado del otro. ¿Qué regla tiene una que no
 tenga la otra? Revisa también el **Config**: no todo lo que cambia el comportamiento está
 en el texto. Después pregúntate qué es más grave para un viajero: una respuesta menos
 simpática o un dato equivocado.
 
-Pista 4 · El Playground da un error al lanzar o al guardar
+</details>
+
+<details>
+<summary>Pista 4 · El Playground da un error al lanzar o al guardar</summary>
 
 Si dice que falta una variable, rellena las tres (`viajero`, `hoy` y `tool_catalog`).  
 Si es un error de autenticación o de modelo, revisa la LLM Connection: la clave, la URL  
 base `https://api.groq.com/openai/v1` y el nombre exacto del modelo en **Custom models**.  
 Si es un error al guardar la herramienta, revisa que el JSON Schema está completo  
 (**Prettify** lo formatea y ayuda a ver si falta una llave).
+
+</details>
 
 ## Para pensar
 
