@@ -21,7 +21,7 @@ from nexus.llm.langfuse_client import langfuse
 from nexus.llm.prompts import prompt_label_scope, prompt_version_scope
 from nexus.runner import Approver, run_turn
 from nexus.settings import Models, RagSettings, settings
-from nexus.simulation.feedback import feedback_for
+from nexus.simulation.feedback import comentario_for, feedback_for
 from nexus.simulation.scenarios import pick_scenario
 from nexus.simulation.types import Assignment, Scenario, SimResult
 
@@ -153,6 +153,15 @@ async def run_traffic(
                     trace_id=result.trace_id,
                     data_type="NUMERIC",
                     environment=entorno,
+                    # Para filtrar los comentarios en la tabla Scores por categoría y versión.
+                    metadata={"categoria": scenario.categoria, "release": assignment.release},
+                    comment=comentario_for(
+                        scenario,
+                        result.answer,
+                        result.tool_calls,
+                        result.feedback,
+                        semilla=result.trace_id,
+                    ),
                 )
         return result
 

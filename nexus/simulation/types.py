@@ -14,7 +14,7 @@ from typing import Any
 class Assignment:
     """A qué versión de Nexus va un viajero en una conversación.
 
-    ``release`` es el nombre que verá Langfuse (``blue``, ``green``, ``marc``, ``jordi``...),
+    ``release`` es el nombre que verá Langfuse (``blue``, ``green``, ``v1-marc``, ``v2-jordi``...),
     ``label`` es el label de Langfuse con el que se leen los prompts y ``flags`` activa
     funcionalidades (por ejemplo, una herramienta nueva).
     """

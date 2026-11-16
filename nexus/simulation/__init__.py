@@ -4,6 +4,7 @@ API pública:
 
 - ``scenarios(...) -> list[Scenario]``: el catálogo de peticiones de viajeros, con su verdad.
 - ``feedback_for(scenario, answer, tool_calls) -> int | None``: la valoración del viajero.
+- ``comentario_for(scenario, answer, tool_calls, feedback) -> str | None``: su comentario.
 - ``async run_traffic(n, *, assign, hoy=None, seed=0, concurrency=1, environment=None,
   tags=()) -> list[SimResult]``: ``n`` conversaciones; ``assign(user_id) -> Assignment``
   decide a qué versión va cada viajero. Registra el score ``user_feedback`` en Langfuse.
@@ -15,7 +16,7 @@ El historial de ``uv run seed`` usa las mismas piezas con un modelo con guion
 from collections.abc import Callable, Sequence
 from datetime import date
 
-from nexus.simulation.feedback import feedback_for
+from nexus.simulation.feedback import comentario_for, feedback_for
 from nexus.simulation.scenarios import scenarios
 from nexus.simulation.types import Assignment, Scenario, SimResult
 
@@ -46,4 +47,12 @@ async def run_traffic(
     )
 
 
-__all__ = ["Assignment", "Scenario", "SimResult", "feedback_for", "run_traffic", "scenarios"]
+__all__ = [
+    "Assignment",
+    "Scenario",
+    "SimResult",
+    "comentario_for",
+    "feedback_for",
+    "run_traffic",
+    "scenarios",
+]

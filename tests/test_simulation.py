@@ -78,6 +78,22 @@ def test_feedback_is_reproducible_and_not_everyone_rates() -> None:
     assert set(valoradas) == {0, 1}
 
 
+def test_comments_explain_the_rating_in_the_travellers_language() -> None:
+    """Un horario inventado se comenta como horario equivocado, en el idioma del viajero."""
+
+    from nexus.simulation.feedback import COMENTARIOS, comentario_for
+
+    scenario = _escenario("horarios")
+    comentarios = {
+        comentario_for(scenario, "Pasa a las 23:59.", [], 0, semilla=str(n)) for n in range(200)
+    }
+
+    assert comentario_for(scenario, "Pasa a las 23:59.", [], None) is None
+    assert None in comentarios  # no todos comentan
+    textos = COMENTARIOS[(0, "dato_mal/horarios")][scenario.idioma]
+    assert comentarios - {None} <= set(textos)
+
+
 # --- El plan del historial --------------------------------------------------------------------
 
 
@@ -94,14 +110,14 @@ def test_history_plan_is_always_the_same() -> None:
 
 
 def test_history_runs_the_ab_test_the_first_week_and_blue_afterwards() -> None:
-    """La primera semana se reparte entre marc y jordi; luego todo es blue."""
+    """La primera semana se reparte entre v1-marc y v2-jordi; luego todo es blue."""
 
     plan = plan_historial()
     prueba = Counter(c.assignment.release for c in plan if c.dia <= FIN_PRUEBA_AB)
     despues = {c.assignment.release for c in plan if c.dia > FIN_PRUEBA_AB}
 
-    assert set(prueba) == {"marc", "jordi"}
-    assert 0.4 < prueba["marc"] / sum(prueba.values()) < 0.6
+    assert set(prueba) == {"v1-marc", "v2-jordi"}
+    assert 0.4 < prueba["v1-marc"] / sum(prueba.values()) < 0.6
     assert despues == {"blue"}
     assert all(c.scenario.categoria == "horarios" for c in plan if c.inventa)
 
@@ -203,7 +219,7 @@ async def test_marc_answers_the_same_question_soberly(nexus_con_guion: Any) -> N
 
     pere = story_scenarios()["pere"]
 
-    answer, _ = await _conversar(nexus_con_guion, pere, "marc")
+    answer, _ = await _conversar(nexus_con_guion, pere, "v1-marc")
 
     assert answer.startswith("El jueves la L3 funciona con normalidad")
     assert "Pere" not in answer

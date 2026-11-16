@@ -7,8 +7,9 @@
 Deja en el proyecto de Langfuse:
 
 1. Los prompts del historial: el orquestador (v1) y los dos executors de la prueba A/B,
-   el de Marc (v1, label ``marc``) y el de Jordi (v2, labels ``jordi`` y ``production``).
-   Si un prompt ya tiene el label ``production`` en otra versión, no se lo quita.
+   el de Marc (v1, label ``marc``) y el de Jordi (v2, label ``jordi``). Ninguna versión
+   del executor lleva ``production``: elegirla es la misión del capítulo 1. Si un prompt
+   ya tiene el label ``production`` en otra versión, no se lo quita.
 2. Los datasets de evaluación (``evaluation/datasets``).
 3. El dashboard «Nexus en producción».
 4. Las conversaciones del 26 de octubre al 15 de noviembre de 2026, con las valoraciones
@@ -234,7 +235,7 @@ async def _historial(
 ) -> list[Registro]:
     from nexus.graph import build_graph
     from nexus.settings import Models, RagSettings
-    from nexus.simulation.feedback import feedback_for
+    from nexus.simulation.feedback import comentario_for, feedback_for
     from nexus.simulation.historial import plan_historial
     from nexus.simulation.modelo import Guion, guion_scope, instalar
     from nexus.simulation.traffic import conversar
@@ -314,12 +315,19 @@ async def _historial(
             inicio = min(span.start_time or 0 for span in spans)
             fin = max(span.end_time or 0 for span in spans)
             if conversacion.historia:
-                feedback = conversacion.valoracion
+                feedback, comentario = conversacion.valoracion, None
             else:
                 feedback = feedback_for(
                     conversacion.scenario,
                     resultado.answer,
                     resultado.tool_calls,
+                    semilla=conversacion.clave,
+                )
+                comentario = comentario_for(
+                    conversacion.scenario,
+                    resultado.answer,
+                    resultado.tool_calls,
+                    feedback,
                     semilla=conversacion.clave,
                 )
             if enviar and feedback is not None:
@@ -330,6 +338,12 @@ async def _historial(
                     trace_id=trace_id,
                     score_id=str(uuid5(NAMESPACE_URL, f"nexus-historial/{conversacion.clave}")),
                     data_type="NUMERIC",
+                    comment=comentario,
+                    # Para filtrar los comentarios en la tabla Scores por categoría y versión.
+                    metadata={
+                        "categoria": conversacion.scenario.categoria,
+                        "release": conversacion.assignment.release,
+                    },
                     environment=ENTORNO,
                     timestamp=datetime.fromtimestamp(fin / 1e9, UTC) + timedelta(seconds=espera),
                 )
@@ -369,6 +383,9 @@ def _valoradas(registros: Sequence[Registro]) -> list[int]:
 
 
 def _resumen(registros: Sequence[Registro]) -> None:
+    from nexus.simulation.historial import BLUE, JORDI, MARC
+
+    releases_ab = (MARC.release, JORDI.release)
     if not registros:
         return
     viajeros = {r.conversacion.scenario.viajero for r in registros}
@@ -377,16 +394,16 @@ def _resumen(registros: Sequence[Registro]) -> None:
         f"{len(_valoradas(registros))} valoradas, {_pct(_valoradas(registros))} 👍."
     )
 
-    prueba = [r for r in registros if r.conversacion.assignment.release in ("marc", "jordi")]
+    prueba = [r for r in registros if r.conversacion.assignment.release in releases_ab]
     if prueba:
         _escribir("\nPrueba A/B de la primera semana (% 👍 de las valoradas):")
         categorias = sorted({r.conversacion.scenario.categoria for r in prueba})
-        cabecera = "  " + f"{'':<18}" + "".join(f"{release:>14}" for release in ("marc", "jordi"))
+        cabecera = "  " + f"{'':<18}" + "".join(f"{release:>14}" for release in releases_ab)
         _escribir(cabecera)
         filas = [("total", None), *((categoria, categoria) for categoria in categorias)]
         for nombre, categoria in filas:
             celdas = []
-            for release in ("marc", "jordi"):
+            for release in releases_ab:
                 grupo = [
                     r
                     for r in prueba
@@ -398,7 +415,7 @@ def _resumen(registros: Sequence[Registro]) -> None:
             _escribir("  " + f"{nombre:<18}" + "".join(f"{celda:>14}" for celda in celdas))
         tokens = {
             release: [r.tokens for r in prueba if r.conversacion.assignment.release == release]
-            for release in ("marc", "jordi")
+            for release in releases_ab
         }
         _escribir(
             "  tokens por conversación: "
@@ -412,7 +429,7 @@ def _resumen(registros: Sequence[Registro]) -> None:
     v2_horarios = [
         r
         for r in registros
-        if r.conversacion.assignment.release in ("jordi", "blue")
+        if r.conversacion.assignment.release in (JORDI.release, BLUE.release)
         and r.conversacion.scenario.categoria == "horarios"
     ]
     sin_tool = [r for r in v2_horarios if not r.resultado.tool_calls]

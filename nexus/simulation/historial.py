@@ -3,8 +3,8 @@
 ``plan_historial()`` decide, siempre igual, qué pasó: quién escribió, cuándo, qué preguntó
 y qué versión de Nexus le atendió. ``uv run seed`` lo ejecuta y lo carga en Langfuse.
 
-- Semana 1 (26 oct – 1 nov): prueba A/B entre el executor de Marc (release ``marc``,
-  executor v1) y el de Jordi (release ``jordi``, executor v2). Cada conversación va a una
+- Semana 1 (26 oct – 1 nov): prueba A/B entre el executor de Marc (release ``v1-marc``,
+  executor v1) y el de Jordi (release ``v2-jordi``, executor v2). Cada conversación va a una
   de las dos al azar, mitad y mitad.
 - Semanas 2 y 3 (2 – 15 nov): el de Jordi ganó y es producción (release ``blue``).
 - Los casos de la historia: Marta pregunta por la bici (martes 3, 8:03), Pere por la L3
@@ -29,14 +29,14 @@ PRIMER_DIA = date(2026, 10, 26)
 ULTIMO_DIA = date(2026, 11, 15)
 FIN_PRUEBA_AB = date(2026, 11, 1)
 
-MARC = Assignment(release="marc", label="marc")
-JORDI = Assignment(release="jordi", label="jordi")
+MARC = Assignment(release="v1-marc", label="marc")
+JORDI = Assignment(release="v2-jordi", label="jordi")
 BLUE = Assignment(release="blue", label="production")
 
 # Versión canónica (la del historial) de cada prompt que usa cada release.
 VERSIONES = {
-    "marc": {ORCHESTRATOR_PROMPT_NAME: 1, EXECUTOR_PROMPT_NAME: 1},
-    "jordi": {ORCHESTRATOR_PROMPT_NAME: 1, EXECUTOR_PROMPT_NAME: 2},
+    MARC.release: {ORCHESTRATOR_PROMPT_NAME: 1, EXECUTOR_PROMPT_NAME: 1},
+    JORDI.release: {ORCHESTRATOR_PROMPT_NAME: 1, EXECUTOR_PROMPT_NAME: 2},
     "blue": {ORCHESTRATOR_PROMPT_NAME: 1, EXECUTOR_PROMPT_NAME: 2},
 }
 
