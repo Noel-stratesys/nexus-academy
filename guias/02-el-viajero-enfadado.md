@@ -56,17 +56,25 @@ amplía siempre el filtro de fecha.
 | 3 · Aislar | Encontrar el primer paso que se equivocó | Comparar lo que entra y lo que sale de cada observation |
 | 4 · Medir | Contar a cuántos más les pasó | Filtros por nombre de observation y búsqueda en la entrada |
 
-**La respuesta es el síntoma; la causa puede estar en cinco sitios.** Sube por el árbol
-hasta el **primer paso que recibe algo correcto y devuelve algo incorrecto**: ahí está el
-fallo.
+**La respuesta es el síntoma; la causa puede estar en cualquier eslabón.** Una respuesta
+que usa una herramienta pasa por esta cadena, y cada eslabón deja en la traza su entrada
+y su salida:
 
-| Componente | Síntoma típico | Qué mirar en la traza |
+```text
+pregunta → orquestador → modelo (elige herramienta y argumentos) → herramienta → datos → modelo (redacta la respuesta)
+```
+
+Recórrela en orden hasta el **primer eslabón que recibe algo correcto y devuelve algo
+incorrecto**: ahí está el fallo. Lo que viene después es consecuencia, no causa.
+
+| Componente | Qué falla | Cómo se ve en la traza |
 | --- | --- | --- |
-| Orquestador | Rechaza algo válido o deja pasar algo ajeno | La salida de la generación del orquestador |
-| Modelo | Ignora lo que dice la herramienta o se lo inventa | La salida de la herramienta frente al texto de la respuesta |
-| Herramienta | Devuelve datos de otro día, línea o estación | La entrada de la herramienta frente a su salida |
-| Datos | La herramienta funciona, pero el dato es viejo o falta | La salida de la herramienta frente a la fuente |
-| Rendimiento | Tarda mucho o gasta muchos tokens | La línea de tiempo y el número de llamadas |
+| Orquestador | Rechaza una petición válida o deja pasar una ajena | La salida del `orchestrator` frente a la pregunta |
+| Modelo, al llamar | Elige otra herramienta, no llama a ninguna o le pasa mal los argumentos (otra línea, otro día, una estación inventada) | El **Input** de la herramienta frente a la pregunta del viajero |
+| Herramienta | Recibe bien los argumentos y calcula mal | El **Input** de la herramienta frente a su **Output** |
+| Datos | La lógica es correcta, pero el dato de la fuente es viejo, falta o está mal | El **Output** de la herramienta frente a la fuente (`nexus/data/`) |
+| Modelo, al responder | Ignora o cambia lo que devolvió la herramienta, o añade cosas que no dijo | El **Output** de la herramienta frente a la respuesta final |
+| Rendimiento | La respuesta es correcta, pero tarda o gasta demasiado (bucles, reintentos) | La línea de tiempo y el número de llamadas |
 
 **Cada fallo encontrado se convierte en dos protecciones.** Un **test** reproduce el
 fallo en el código: es rápido, no llama al modelo y salta en cuanto alguien lo
@@ -101,16 +109,38 @@ el modelo, en cada experimento. El test protege la pieza; el caso, el comportami
 
 ### En el código
 
-1. **Reproduce el fallo con un test.** Modifica el test en la carpeta`tests/test_error_pere.py` con el caso de
+1. **Reproduce el fallo con un test.** Abre
+   [`tests/test_error_pere.py`](../tests/test_error_pere.py) y escribe el caso de Pere:
+   el martes 10 de noviembre, «jueves» tiene que ser el jueves 12. Hay un test por
+   componente: completa **solo** el del componente en el que has visto el fallo, borrando
+   su línea `pytest.skip(...)`, y deja el otro como está. Lánzalo desde la carpeta del
+   proyecto:
 
-   Pere: el martes 10 de noviembre, «jueves» tiene que ser el jueves 12. Lánzalo:
+   ```bash
+   uv run pytest tests/test_error_pere.py -v
+   ```
 
-    Qué esperar: el test **falla**, y pytest enseña la fecha que devuelve ahora
-    `resolve_day`. Un test que reproduce un fallo tiene que fallar antes del arreglo; si
-    pasa, no está probando lo que crees.
+   Con `-v`, pytest escribe una línea por test: `PASSED`, `FAILED` o `SKIPPED` (el que
+   no has completado). Para lanzar solo uno, añade `::` y su nombre a la ruta del
+   fichero, por ejemplo `uv run pytest tests/test_error_pere.py::test_los_datos -v`.
+
+   Mientras falte algo por rellenar, el test falla con un mensaje que dice qué falta
+   (`Falta hoy…`, `Faltan los argumentos…`). Eso todavía no es el fallo de Pere.
+
+   Qué esperar: con todo rellenado, tu test **falla** (`FAILED`) y pytest enseña el
+   `assert` que no se cumple y, debajo de *Captured stdout call*, lo que imprimió el `print`. Un test que
+   reproduce un fallo tiene que fallar antes del arreglo; si pasa, no está probando lo
+   que crees.
 2. **Corrige** `resolve_day` en [`nexus/calendar.py`](../nexus/calendar.py). Vuelve a
+   lanzar tu test hasta que pase y, después, todos los tests del proyecto, para comprobar
+   que el arreglo no rompe nada más:
 
-   lanzar el test hasta que pase y, después, todos:
+   ```bash
+   uv run pytest
+   ```
+
+   Qué esperar: ningún `FAILED`. El test que dejaste sin completar sale como `SKIPPED`
+   (una `s` en la línea de puntos).
 3. **Añade el caso de Pere al dataset** `nexus/agente`, al final de `CASES` en
 
    [`evaluation/datasets/agente.py`](../evaluation/datasets/agente.py). Completa lo

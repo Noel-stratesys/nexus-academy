@@ -3,6 +3,8 @@
 import unicodedata
 from datetime import date, timedelta
 
+# Cada nombre de día, en castellano, catalán e inglés, con su número en la semana:
+# lunes = 0, martes = 1, miércoles = 2… domingo = 6.
 DIAS_SEMANA: dict[str, int] = {}
 for index, names in enumerate(
     [
@@ -42,7 +44,8 @@ def resolve_day(dia: str, hoy: date) -> date:
 
     Acepta una fecha ISO (``2026-11-12``), ``hoy``/``mañana``/``pasado mañana`` y los días
     de la semana en castellano, catalán o inglés. Un día de la semana es el próximo con
-    ese nombre; si es el mismo día de hoy, es hoy.
+    ese nombre; si es el mismo día de hoy, es hoy. Por ejemplo, un lunes, ``miércoles``
+    es dentro de 2 días y ``lunes`` es hoy (dentro de 0 días).
     """
 
     text = _normalize(dia)
@@ -53,7 +56,8 @@ def resolve_day(dia: str, hoy: date) -> date:
     if text in RELATIVOS:
         return hoy + timedelta(days=RELATIVOS[text])
     if text in DIAS_SEMANA:
-        target = DIAS_SEMANA[text]
+        target = DIAS_SEMANA[text]  # el número del día pedido, con lunes = 0
+        # Los días que faltan desde hoy hasta el próximo día pedido: de 0 (hoy) a 6.
         offset = (target - hoy.isoweekday()) % 7
         return hoy + timedelta(days=offset)
     raise ValueError(
