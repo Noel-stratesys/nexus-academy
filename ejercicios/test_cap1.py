@@ -1,9 +1,11 @@
 """Misión 1 · Dos prompts y una discusión (``uv run check 1``).
 
 Comprueba que Nexus sigue funcionando si Langfuse cae (el prompt tiene un fallback) y
-que la versión ``production`` del executor no usa una temperatura alta.
+que la versión ``production`` del executor es una de las dos de la prueba A/B, la de
+Marc o la de Jordi, con una temperatura baja.
 """
 
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -42,15 +44,15 @@ def test_langfuse_prompt_usa_el_prompt_del_codigo_como_fallback(
     )
 
 
-def test_production_del_executor_tiene_temperatura_baja() -> None:
-    """La versión production de nexus/executor fija una temperatura de 0,3 o menos"""
+def _executor(label: str) -> Any:
+    """La versión de nexus/executor que tiene ``label`` en Langfuse."""
 
     from nexus.llm.langfuse_client import langfuse
 
     try:
-        prompt = langfuse.get_prompt(
+        return langfuse.get_prompt(
             "nexus/executor",
-            label="production",
+            label=label,
             type="chat",
             cache_ttl_seconds=0,
             max_retries=0,
@@ -58,16 +60,47 @@ def test_production_del_executor_tiene_temperatura_baja() -> None:
         )
     except Exception as error:
         pytest.fail(
-            "No encuentro nexus/executor con el label production en Langfuse "
-            f"({type(error).__name__}). ¿Responde Langfuse? Publica con: uv run prompts"
+            f"No encuentro nexus/executor con el label {label} en Langfuse "
+            f"({type(error).__name__}). ¿Responde Langfuse? ¿Has cargado el historial con "
+            "uv run seed?"
         )
-    temperature = ((prompt.config or {}).get("model") or {}).get("temperature")
-    assert temperature is not None, (
-        f"La versión {prompt.version} (production) no fija config.model.temperature. "
-        "Elige una versión que la fije y mueve a ella el label production."
+
+
+def _production() -> Any:
+    """La versión de nexus/executor con el label production; falla si no hay ninguna."""
+
+    from nexus.llm.langfuse_client import langfuse
+
+    try:
+        return langfuse.get_prompt(
+            "nexus/executor",
+            label="production",
+            type="chat",
+            cache_ttl_seconds=0,
+            max_retries=0,
+            fetch_timeout_seconds=10,
+        )
+    except Exception:
+        pytest.fail("Ninguna versión de nexus/executor tiene el label production.")
+
+
+def _numero(valor: object) -> str:
+    return str(valor).replace(".", ",")
+
+
+def test_production_del_executor() -> None:
+    """La versión production de nexus/executor es de la prueba A/B y con temperatura baja"""
+
+    de_la_prueba = sorted(_executor(label).version for label in ("marc", "jordi"))
+    production = _production()
+    temperature = ((production.config or {}).get("model") or {}).get("temperature")
+    actual = f"production apunta a la versión {production.version}, " + (
+        f"con temperatura {_numero(temperature)}."
+        if temperature is not None
+        else "sin temperatura en su config."
     )
-    assert float(temperature) <= MAX_TEMPERATURE, (
-        f"production apunta a la versión {prompt.version}, con temperatura {temperature}. "
-        "Una temperatura alta da variedad, no exactitud: mueve el label production a una "
-        "versión con temperatura baja (desde la UI o con uv run prompts --label production)."
+    assert production.version in de_la_prueba, (
+        f"{actual} No es ninguna de las de la prueba A/B (versiones "
+        f"{' y '.join(map(str, de_la_prueba))})."
     )
+    assert temperature is not None and float(temperature) <= MAX_TEMPERATURE, actual

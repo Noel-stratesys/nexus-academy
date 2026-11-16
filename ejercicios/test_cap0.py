@@ -18,7 +18,6 @@ from nexus.settings import PROJECT_ROOT, initialize_environment, settings
 initialize_environment()
 
 LANGFUSE_KEYS = ("LANGFUSE_BASE_URL", "LANGFUSE_PUBLIC_KEY", "LANGFUSE_SECRET_KEY")
-PROMPT_NAMES = ("nexus/orchestrator", "nexus/executor")
 # Variable con la clave de cada proveedor (Ollama corre en local y no necesita clave).
 PROVIDER_KEYS = {"groq": "GROQ_API_KEY", "openai": "OPENAI_API_KEY"}
 
@@ -86,28 +85,34 @@ def test_langfuse_responde() -> None:
     assert ok, "Langfuse responde pero no acepta las claves: revisa LANGFUSE_* en tu .env."
 
 
-def test_prompts_publicados_en_production() -> None:
-    """Los prompts nexus/orchestrator y nexus/executor están publicados con el label production"""
+# El orquestador está en production; del executor, las dos versiones de la prueba A/B
+# (cuál pasa a production es la misión del capítulo 1).
+PROMPT_LABELS = (
+    ("nexus/orchestrator", "production"),
+    ("nexus/executor", "marc"),
+    ("nexus/executor", "jordi"),
+)
+
+
+def test_prompts_publicados() -> None:
+    """Los prompts nexus/orchestrator y nexus/executor están publicados en Langfuse"""
 
     from nexus.llm.langfuse_client import langfuse
 
     missing = []
-    for name in PROMPT_NAMES:
+    for name, label in PROMPT_LABELS:
         try:
             langfuse.get_prompt(
                 name,
-                label="production",
+                label=label,
                 type="chat",
                 cache_ttl_seconds=0,
                 max_retries=0,
                 fetch_timeout_seconds=10,
             )
         except Exception:
-            missing.append(name)
-    assert not missing, (
-        f"No encuentro en Langfuse con el label production: {', '.join(missing)}. "
-        "Publícalos con: uv run prompts"
-    )
+            missing.append(f"{name} ({label})")
+    assert not missing, f"No encuentro en Langfuse: {', '.join(missing)}. Cárgalos con: uv run seed"
 
 
 def test_clave_del_proveedor_configurada() -> None:

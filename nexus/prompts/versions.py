@@ -9,8 +9,11 @@ Prompt              Versión  Labels                         Qué es
 ==================  =======  =============================  ==========================
 nexus/orchestrator  1        production, marc, jordi        El orquestador del código
 nexus/executor      1        marc                           Marc: sobrio, temperatura 0,2
-nexus/executor      2        jordi, production              Jordi: cercano, temperatura 0,9
+nexus/executor      2        jordi                          Jordi: cercano, temperatura 0,9
 ==================  =======  =============================  ==========================
+
+Ninguna versión del executor lleva ``production``: elegir cuál lo lleva es la misión
+del capítulo 1. Mientras tanto, Nexus usa el prompt del código (el fallback).
 
 El orquestador también lleva los labels ``marc`` y ``jordi`` porque, durante el A/B, la
 aplicación lee **todos** sus prompts con el label de la variante (``prompt_label_scope``).
@@ -91,7 +94,7 @@ CANONICAL_VERSIONS: list[CanonicalVersion] = [
         "Orquestador inicial",
     ),
     CanonicalVersion(EXECUTOR_MARC, 1, ("marc",), "Executor de Marc: sobrio y fiel a las tools"),
-    CanonicalVersion(EXECUTOR_JORDI, 2, ("jordi", "production"), "Executor de Jordi: más cercano"),
+    CanonicalVersion(EXECUTOR_JORDI, 2, ("jordi",), "Executor de Jordi: más cercano"),
 ]
 
 # {(prompt, versión real en Langfuse): versión canónica del historial}
