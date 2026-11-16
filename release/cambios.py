@@ -40,14 +40,6 @@ class CambioError(ValueError):
     """El cambio no se puede construir sobre el prompt que hay en producción."""
 
 
-def _replace(text: str, old: str, new: str) -> str:
-    """``text`` con ``old`` cambiado por ``new``; falla si ``old`` no está."""
-
-    if old not in text:
-        raise CambioError(f"El prompt de producción no contiene {old!r}.")
-    return text.replace(old, new, 1)
-
-
 def _before_tools(text: str, line: str) -> str:
     """``text`` con ``line`` justo antes de la lista de herramientas."""
 
@@ -57,14 +49,20 @@ def _before_tools(text: str, line: str) -> str:
     return f"{head}\n{line}{separator}{tail}"
 
 
+REGLA_A = (
+    f"{TONO_A}: saluda al viajero por su nombre y háblale de tú. Si hay una incidencia o "
+    "un aviso que afecta a su viaje, empieza por él, en una frase clara."
+)
+BREVE = "Sé breve y concreto: dos o tres frases, con los datos útiles.\n"
+
+
 def _cambio_a(production: str) -> str:
-    return _replace(
-        production,
-        "7. Sé breve y concreto: dos o tres frases, con los datos útiles.\n",
-        f"7. {TONO_A}: saluda al viajero por su nombre y háblale de tú. Si hay una "
-        "incidencia o un aviso que afecta a su viaje, empieza por él, en una frase clara.\n"
-        "8. Sé breve y concreto: dos o tres frases, con los datos útiles.\n",
-    )
+    # Sobre el prompt del código (reglas numeradas), A entra como regla 7. Sobre otro
+    # prompt (por ejemplo, el que se preparó en el capítulo 1 a partir del de Jordi, con
+    # guiones), va al final de las reglas, antes de la lista de herramientas.
+    if f"7. {BREVE}" in production:
+        return production.replace(f"7. {BREVE}", f"7. {REGLA_A}\n8. {BREVE}", 1)
+    return _before_tools(production, f"- {REGLA_A}")
 
 
 def _cambio_b(production: str) -> str:
@@ -75,7 +73,14 @@ def _cambio_b(production: str) -> str:
     if regla in text:
         return text.replace(regla, f"6. {REGLA_B}\n")
     text = text.replace(" Devolución solo si la normativa la permite.", "")
-    return _before_tools(text, f"- {REGLA_B}")
+    # En un prompt con guiones, la regla de la normativa es una línea propia: se quita.
+    lineas = [linea for linea in text.split("\n") if not _es_regla_de_devolucion(linea)]
+    return _before_tools("\n".join(lineas), f"- {REGLA_B}")
+
+
+def _es_regla_de_devolucion(linea: str) -> bool:
+    plana = linea.strip().lstrip("-•*0123456789. ").lower()
+    return plana.startswith("solo se tramita una devolución")
 
 
 def _cambio_c(production: str) -> str:

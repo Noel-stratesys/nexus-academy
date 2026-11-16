@@ -281,6 +281,31 @@ def test_change_d_adds_the_tool_rule_and_flag_without_undoing_c() -> None:
     assert REGLA_D in CAMBIOS["C"].executor_prompt(with_d)
 
 
+def test_changes_also_build_on_a_prompt_made_from_jordis() -> None:
+    """A, B y D se construyen también sobre una versión hecha a partir de la de Jordi.
+
+    Es lo que deja en producción el capítulo 1: el prompt de Jordi, con guiones en vez
+    de reglas numeradas, y la regla de consultar las herramientas que le faltaba.
+    """
+
+    from nexus.prompts.versions import EXECUTOR_JORDI
+
+    jordi = EXECUTOR_JORDI.messages[0]["content"]
+    capitulo_1 = jordi.replace(
+        "- Contesta siempre",
+        "- Consulta las herramientas antes de dar horarios. No respondas de memoria.\n"
+        "- Contesta siempre",
+    )
+    with_a = CAMBIOS["A"].executor_prompt(capitulo_1)
+    assert TONO_A in with_a and "No respondas de memoria" in with_a
+
+    with_b = CAMBIOS["B"].executor_prompt(with_a)
+    assert "Solo se tramita una devolución si la normativa la permite" not in with_b
+    assert "solicitar_devolucion enseguida" in with_b
+
+    assert REGLA_D in CAMBIOS["D"].executor_prompt(with_a)
+
+
 # --- Herramienta proximos_trenes --------------------------------------------------------------
 
 
