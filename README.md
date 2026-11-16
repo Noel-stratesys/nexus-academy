@@ -14,7 +14,7 @@ te dirá si tienes todo listo.
 
 ## Las guías
 
-Cada capítulo es un encargo de Laia, la product owner. Cada guía cuenta la historia,
+Cada capítulo es un encargo nuevo para el equipo. Cada guía cuenta la historia,
 lo que necesitas saber, la misión paso a paso y cómo comprobar que la has terminado.
 
 | Guía | Pregunta | Comprobación |

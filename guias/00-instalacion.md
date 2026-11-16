@@ -107,7 +107,7 @@ Misión 0 · Todo listo para empezar  (ejercicios/test_cap0.py)
   ✔ Existe el fichero .env con tu configuración
   ✔ Las claves de Langfuse están en el .env
   ✔ Langfuse responde en http://localhost:3100 y acepta tus claves
-  ✔ Los prompts nexus/orchestrator y nexus/executor están publicados con el label production
+  ✔ Los prompts nexus/orchestrator y nexus/executor están publicados en Langfuse
   ✔ La clave del proveedor del modelo está en el .env
   ✔ El proveedor del modelo responde a una pregunta mínima
   ✔ El historial de tres semanas de Nexus está cargado en Langfuse

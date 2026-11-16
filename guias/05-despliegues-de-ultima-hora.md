@@ -31,9 +31,9 @@ cambio preparado → puerta → 10 % → 50 % → 100 % → promote
 
 - **Blue** es la versión estable: los prompts con el label `production`.
 - **Green** es la versión nueva: los prompts con el label `green` y sus funcionalidades
-(flags).
+  (flags).
 - **El router** decide qué viajeros van a green con `hash(viajero) % 100`: la misma
-persona va siempre a la misma versión.
+  persona va siempre a la misma versión.
 - **Cada traza lleva su release:** puedes comparar blue y green en el mismo periodo.
 
 El estado está en `release.toml`. No lo edites a mano: lo escribe `uv run release`.
@@ -70,9 +70,9 @@ uv run release rollback --motivo "…"     # green vuelve al 0 %; el cambio sigu
 
 - `shift` no deja subir el tráfico si el cambio no ha superado la puerta.
 - `simulate` imprime una tabla por release (conversaciones, valoración, latencia media y
-p95, errores y herramientas por conversación) y deja las trazas en Langfuse. Usa
-`--seed` para cambiar de viajeros y `--concurrencia` para ir más rápido (cuidado con
-los límites del proveedor).
+  p95, errores y herramientas por conversación) y deja las trazas en Langfuse. Usa
+  `--seed` para cambiar de viajeros y `--concurrencia` para ir más rápido (cuidado con
+  los límites del proveedor).
 - **Apunta siempre el motivo** de cada `promote` y `rollback`.
 
 ## La misión
@@ -81,12 +81,10 @@ Para **cada** cambio:
 
 1. `uv run release prepare <cambio>`.
 2. `uv run release gate`. Si no pasa, no recibe tráfico: decide si lo descartas
-
    (rollback) o lo corriges.
 3. `uv run release shift 10` y `uv run simulate --n 40`. Compara blue y green: en la
-
    tabla del simulador y en el dashboard **«Nexus en producción»**, por release y por
-    segmento.
+   segmento.
 4. Si todo va bien, sube a 50 % y luego a 100 %, simulando y mirando en cada paso.
 5. Cierra el cambio con `promote` o `rollback`, **con un motivo**.
 
@@ -94,8 +92,8 @@ Para **cada** cambio:
 
 | Dónde está el arreglo | Qué haces después |
 | --- | --- |
-| En el prompt corto del cambio C (`release/prompt_corto.py`) | `uv run release prepare C` para volver a publicarlo |
-| En una herramienta (por ejemplo `nexus/tools/proximos.py`) | `uv run release gate` otra vez: el código ya está cambiado |
+| En un prompt del cambio (los prompts de los cambios están en `release/`) | `uv run release prepare <cambio>` para volver a publicarlo |
+| En el código de una herramienta (`nexus/tools/`) | `uv run release gate` otra vez: el código ya está cambiado |
 
 **Cada rollback deja un caso nuevo en el dataset.** Si el canary descubre algo que la
 puerta no vio, añade a `evaluation/datasets/agente.py` los casos que lo habrían
@@ -117,41 +115,45 @@ uv run check 5
 - Los que fallaban se han corregido y se han vuelto a desplegar.
 - `uv run check 5` sale en verde.
 
-Pista 1 · La puerta no pasa
+<details>
+<summary>Pista 1 · La puerta no pasa</summary>
 
 Lee la tabla de la puerta: dice qué score no llega al mínimo. Después abre el run del
 experimento en Langfuse y mira los casos que fallan en ese score. ¿Qué hace Nexus en
 ellos que no debería?
 
+</details>
 
+<details>
+<summary>Pista 2 · En la tabla del simulador todo parece igual</summary>
 
-Pista 2 · En la tabla del simulador todo parece igual
+¿Cuántas conversaciones fueron a green? ¿Te basta ese número para concluir algo? ¿Y si
+el fallo solo afecta a un grupo de viajeros?
 
-Con 40 conversaciones y green al 10 %, solo unas pocas van a green. Sube el número de
-conversaciones o mira el dashboard por segmento: idioma y categoría.
+</details>
 
+<details>
+<summary>Pista 3 · Green tarda mucho y gasta muchos tokens</summary>
 
+Abre una traza lenta de green y mira su línea de tiempo. ¿El problema está en lo que
+decide el modelo o en lo que le devuelve la herramienta? ¿Cómo lo comprobarías sin pasar
+por el modelo?
 
-Pista 3 · Green tarda mucho y gasta muchos tokens
+</details>
 
-Abre una traza lenta de green y cuenta las llamadas a la misma herramienta. ¿Qué
-responde la herramienta cada vez? Prueba la función directamente desde Python con la
-misma estación.
-
-
-
-Pista 4 · No puedo preparar un cambio
+<details>
+<summary>Pista 4 · No puedo preparar un cambio</summary>
 
 `prepare` falla si green todavía tiene tráfico (termina antes el cambio anterior) o si
 el cambio necesita que A esté en producción. `uv run release status` te dice en qué
 estado está cada uno.
 
-
+</details>
 
 ## Para pensar
 
 - ¿De qué te protege la puerta? ¿Y de qué te protege el canary?
 - ¿Qué caso habrías añadido al dataset para que la puerta hubiera parado cada cambio que
-falló en el canary?
+  falló en el canary?
 
 Siguiente: [06 · Proyecto final](06-proyecto-final.md).

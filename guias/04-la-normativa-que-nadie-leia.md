@@ -66,34 +66,44 @@ que siempre contesta algo sacaría buena nota.
 ### En Langfuse
 
 1. **Encuentra la traza de Marta** (usuario `1017`) y abre la observation `retriever`.
-
    ¿De qué documento salió el fragmento en el que se basó la respuesta? Ábrelo en
-    `nexus/docs/` y fíjate en su cabecera.
+   `nexus/docs/`: ¿es el documento que debería haber respondido a Marta?
 2. **Diagnostica.** Crea un score categórico `diagnostico_rag` con las cuatro casillas
-
    de la matriz (todo bien, fallo de generación, acierto por suerte, fallo de
-    recuperación) y clasifica con él 12 trazas de normativa.
+   recuperación) y clasifica con él 12 trazas de normativa.
 
 ### En el código
 
 1. Abre `evaluation/evaluators.py` y completa tres evaluadores:
    - `recupera_documento`: 1 si alguno de los fragmentos recuperados viene de un
-    documento esperado (`expected_output["docs"]`), 0 si no. Ojo: los ids de fragmento
-    tienen la forma `doc_id#chunk`. Sin documentos esperados, devuelve `[]`.
+     documento esperado (`expected_output["docs"]`), 0 si no. Ojo: los ids de fragmento
+     tienen la forma `doc_id#chunk`. Sin documentos esperados, devuelve `[]`.
    - `recupera_derogada`: 1 si algún fragmento viene de un documento que ya no está
-   vigente. Cada documento lo dice en su campo `vigente` (`load_documents()`). Sin
-   fragmentos, devuelve `[]`.
+     vigente. Cada documento lo dice en su campo `vigente` (`load_documents()`). Sin
+     fragmentos, devuelve `[]`.
    - `abstencion_correcta`: 1 si Nexus responde cuando hay respuesta y se abstiene
-   («no consta…») cuando no la hay (`expected_output["responde"]`). Si el caso no lo
-   dice, devuelve `[]`.
+     («no consta…») cuando no la hay (`expected_output["responde"]`). Si el caso no lo
+     dice, devuelve `[]`.
 2. **Barre configuraciones.** Lanza un experimento por variante y compáralas en
-
    Langfuse (pestaña del dataset `nexus/rag`):
 
-    Puedes combinar opciones y ponerle nombre a cada variante con `--nombre`, para
-    reconocerla en Langfuse.
-3. **Elige una configuración**, ponla en tu `.env` (`RAG__TOP_K`, `RAG__CHUNK_SIZE`,
+   ```bash
+   uv run experiment rag --rag-top-k 2
+   uv run experiment rag --rag-top-k 4
+   uv run experiment rag --rag-top-k 8
+   uv run experiment rag --rag-chunk-size 100
+   uv run experiment rag --rag-chunk-size 800
+   uv run experiment rag --rag-solo-vigentes
+   ```
 
+   Puedes combinar opciones y ponerle nombre a cada variante con `--nombre`, para
+   reconocerla en Langfuse:
+
+   ```bash
+   uv run experiment rag --rag-top-k 4 --rag-chunk-size 250 --nombre "k4-c250"
+   ```
+
+3. **Elige una configuración**, ponla en tu `.env` (`RAG__TOP_K`, `RAG__CHUNK_SIZE`,
    `RAG__ONLY_CURRENT`, `RAG__STRATEGY`) y defiéndela con la tabla de comparación.
 
 Comprueba:
@@ -120,27 +130,31 @@ Rellena esta tabla con tu barrido; la usaremos al cerrar el capítulo:
 - El caso de Marta pasa **y el resto no empeora**.
 - Puedes explicar si el fallo de Marta era de recuperación, de generación o de datos.
 
-Pista 1 · El modelo dijo que sí, ¿se lo inventó?
+<details>
+<summary>Pista 1 · El modelo dijo que sí, ¿se lo inventó?</summary>
 
-Compara la respuesta con los fragmentos del `retriever`. Si la respuesta dice lo mismo
-que el fragmento, el modelo fue fiel: el problema está antes. Mira la fecha y el campo
-`vigente` del documento del que sale ese fragmento.
+Usa la matriz: lo primero es decidir si la respuesta es fiel a los fragmentos que le
+llegaron al modelo. Según lo que salga, sabrás en qué fila y en qué columna estás, y
+hacia dónde mirar después.
 
+</details>
 
+<details>
+<summary>Pista 2 · ¿Por qué no aparece la normativa vigente?</summary>
 
-Pista 2 · ¿Por qué no aparece la normativa vigente?
+Prueba la pregunta de Marta con `uv run index --buscar "…"`. Después busca a mano en
+`nexus/docs/` el documento que debería haber salido y compáralo con el que sale. ¿Qué
+tiene el que sale que no tenga el otro? Repasa la tabla de ajustes.
 
-Prueba la pregunta de Marta con `uv run index --buscar "…"` y fíjate en las palabras.
-¿El documento vigente usa las mismas que la pregunta? BM25 busca palabras exactas.
+</details>
 
-
-
-Pista 3 · Subo top_k y el caso de Marta pasa, ¿ya está?
+<details>
+<summary>Pista 3 · Subo top_k y el caso de Marta pasa, ¿ya está?</summary>
 
 Mira qué más ha cambiado: ¿cuántos fragmentos derogados entran ahora? ¿Y los tokens por
 respuesta? Una configuración que arregla un caso y empeora el resto no es una solución.
 
-
+</details>
 
 ## Para pensar
 

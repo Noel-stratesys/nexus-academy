@@ -3,7 +3,7 @@
 > «Tenemos una queja seria. Antes de tocar nada, quiero saber qué pasó y a cuántos
 > viajeros más les ha pasado.»
 
-**Ticket #4471 · viajero 1042 (Pere):**
+**Ticket #4471 · viajero 1042 (Pere) · sesión** `f3524934fee165321b4fe0b66d593af7`**:**
 
 > «El martes le pregunté a Nexus si la L3 funcionaba con normalidad el jueves y me dijo
 > que sí. El jueves estaba cortada por obras y llegué tarde al trabajo.»
@@ -30,6 +30,17 @@ nexus-agent                    la conversación: el mensaje del viajero y la res
    ├─ consultar_incidencias    entrada: los argumentos · salida: lo que devolvió
    └─ (generación del modelo)  el modelo redacta la respuesta con esos datos
 ```
+
+Así se ve en Langfuse. El árbol real tiene más nodos: los de LangGraph y los
+*middlewares* (`ModelCallLimitMiddleware`, `HumanInTheLoopMiddleware`, `ChatPromptTemplate`…)
+son fontanería interna. Fíjate en tres: las generaciones del modelo (`ChatGroq`), la
+herramienta (`consultar_incidencias`) y, al seleccionar cualquiera, su **Input** y su
+**Output** a la derecha.
+
+![Vista Tree de una traza: la herramienta consultar_incidencias seleccionada, con su entrada y su salida](img/02/01-arbol-de-una-traza.png)
+
+> Para que el árbol quepa en pantalla, abre el menú **⋮** junto a *Search* y desactiva
+> **Show Duration** y **Show Cost**: cada nodo ocupa una sola línea.
 
 **Cada traza lleva quién y cuándo.** El *User ID* es el id del viajero (`1042` en el
 caso de Pere) y cada conversación tiene su *Session*. El historial va del 26 de octubre
@@ -68,23 +79,21 @@ el modelo, en cada experimento. El test protege la pieza; el caso, el comportami
 
 1. **Localiza la conversación.** En **Tracing**, pon un rango de fechas que incluya el
 
-   martes 10 de noviembre de 2026 y filtra por **User ID** `1042`. También puedes entrar
-    por **Users → 1042**.
+   martes 10 de noviembre de 2026 y filtra por **Session ID** con el id que trae el
+    ticket, `f3524934fee165321b4fe0b66d593af7`. Pere ha hablado con Nexus más veces: si
+    filtras solo por **User ID** `1042` verás todas sus conversaciones.
 
-    Qué esperar: una traza `nexus-agent` de ese martes por la mañana con la pregunta de
-    Pere sobre la L3.
+    Qué esperar: una sola traza `nexus-agent`, del martes 10 a las 07:52, con la pregunta
+    de Pere sobre la L3.
 2. **Lee el árbol.** Abre la traza y recorre cada observation, de arriba abajo. Para
 
-   cada una, apunta qué recibió y qué devolvió. ¿Qué pidió el modelo a la herramienta?
-    ¿De qué fecha son los datos que devolvió? ¿Qué le dijo Nexus a Pere?
-3. **Aísla el fallo.** ¿En cuál de los cinco sitios está? Escríbelo en una frase y
+   cada una, apunta qué recibió y qué devolvió.
+3. **Aísla el fallo.** ¿En qué componente está? Escríbelo en una frase y
 
    justifícalo con una entrada y una salida concretas de la traza.
-4. **Mide el alcance.** Busca las observations de `consultar_incidencias` y
+4. **Mide el alcance.** Ahora que sabes qué tipo de entrada provoca el fallo, busca las
 
-   `consultar_horario` cuya entrada lleva un día de la semana en `dia` (filtra por
-    nombre y busca el día en el texto de la entrada). Cuenta cuántas trazas son y cuántos
-    viajeros distintos.
+   demás observations que lo pudieron sufrir. Cuenta cuántas trazas son y cuántos viajeros distintos.
 
     Después afina: ¿en todas esas trazas la respuesta tenía un dato equivocado? Separa las
     trazas **afectadas por el fallo** de las que acabaron con una **respuesta
@@ -92,9 +101,9 @@ el modelo, en cada experimento. El test protege la pieza; el caso, el comportami
 
 ### En el código
 
-1. **Reproduce el fallo con un test.** Crea `tests/test_calendario.py` con el caso de
+1. **Reproduce el fallo con un test.** Modifica el test en la carpeta`tests/test_error_pere.py` con el caso de
 
-   Pere: el martes 10 de noviembre, «jueves» tiene que ser el jueves 12.
+   Pere: el martes 10 de noviembre, «jueves» tiene que ser el jueves 12. Lánzalo:
 
     Qué esperar: el test **falla**, y pytest enseña la fecha que devuelve ahora
     `resolve_day`. Un test que reproduce un fallo tiene que fallar antes del arreglo; si
@@ -133,7 +142,7 @@ tiempo**. ¿Cuántas veces llama Nexus a la misma herramienta? ¿Con qué argume
 le contesta la herramienta cada vez?
 
 Cuando lo entiendas, corrige [`nexus/tools/incidencias.py`](../nexus/tools/incidencias.py)
-para que, sin línea, consulte toda la red. `uv run check 2` lo marca como
+para que esa consulta no vuelva a entrar en bucle. `uv run check 2` lo marca como
 `[nivel extra]`: se muestra, pero no cuenta para la misión.
 
 ## Sabrás que lo has hecho si…
@@ -147,41 +156,41 @@ recibieron un dato equivocado.
 Pista 1 · No encuentro la conversación de Pere
 
 Revisa el filtro de fecha: tiene que incluir el martes 10 de noviembre de **2026**. El
-User ID es exactamente `1042`. Si la lista sigue vacía, quita los demás filtros.
+Session ID es exactamente `f3524934fee165321b4fe0b66d593af7`. Si la lista sigue vacía,
+quita los demás filtros.
 
 
 
 Pista 2 · Todos los pasos parecen correctos
 
-Compara el argumento `dia` de la entrada de `consultar_incidencias` con el campo
-`fecha` de su salida. ¿Qué día de la semana es el 10 de noviembre de 2026? ¿Y el día que
-devolvió la herramienta?
+Para cada observation, escribe en una línea «recibió X, devolvió Y». Fíjate sobre todo en
+los datos que Pere no escribió y que Nexus tuvo que calcular por su cuenta. ¿Alguna
+salida no corresponde a lo que se pidió?
 
 
 
 Pista 3 · Veo el fallo, pero no sé corregirlo
 
-Mira cómo numera los días `DIAS_SEMANA` al principio de `nexus/calendar.py` y cómo los
-numera la función con la que `resolve_day` calcula el día de hoy. ¿Qué número tiene el
-lunes en `weekday()` y en `isoweekday()`?
+Llama a `resolve_day` con el caso de Pere y sigue sus valores intermedios con un `print`
+o con el depurador. Al lado, apunta a mano lo que debería valer cada uno según un
+calendario. ¿En qué línea deja de cuadrar?
 
 
 
 Pista 4 · ¿Cómo cuento a cuántos más les pasó?
 
-Filtra las observations por nombre (`consultar_incidencias`, `consultar_horario`) y
-busca el nombre del día en la entrada. Los viajeros también escriben en catalán e
-inglés: `dijous`, `thursday`… Cuenta los User ID distintos. Para saber si la respuesta
-era incorrecta, compara lo que devolvió la herramienta con lo que habría devuelto para
-el día correcto.
+Filtra las observations por el nombre de las herramientas que reciben un día y busca en
+la entrada el tipo de valor que provoca el fallo. ¿Todos los viajeros escriben en
+castellano? Cuenta los User ID distintos. Para saber si la respuesta era incorrecta,
+compara lo que devolvió la herramienta con lo que habría devuelto para el día correcto.
 
 
 
 Pista 5 · El nivel extra sigue fallando
 
-Sin línea, la herramienta contesta que el sistema central está ocupado y pide que se
-reintente, y el modelo obedece. En lugar de ese sistema, recorre todas las líneas
-(`lineas()`) y junta lo que devuelve `incidents_on` para cada una.
+¿El problema es que el modelo insiste o que la herramienta le pide que insista? Busca en
+el mismo módulo, y en los datos que usa, algo que ya sepa dar las incidencias de una
+sola línea.
 
 
 
