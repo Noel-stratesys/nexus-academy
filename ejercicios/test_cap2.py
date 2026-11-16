@@ -31,8 +31,8 @@ def test_resolve_day_acierta_el_caso_de_pere() -> None:
     hoy = date(2026, 11, 10)
     result = resolve_day("jueves", hoy)
     assert result == date(2026, 11, 12), (
-        f"Desde el {describe(hoy)}, «jueves» da el {describe(result)}. Compara lo que pidió "
-        "el modelo a la herramienta con la fecha que devolvió, y revisa nexus/calendar.py."
+        f"Desde el {describe(hoy)}, «jueves» da el {describe(result)}. Reproduce este caso "
+        "en tu test y sigue los valores intermedios de resolve_day."
     )
 
 
@@ -51,7 +51,7 @@ def test_resolve_day_acierta_todos_los_dias_de_la_semana() -> None:
                 )
     assert not errors, (
         f"{len(errors)} de {len(HOY_DATES) * len(WEEKDAYS)} fechas mal. Por ejemplo, "
-        f"{errors[0]}. ¿Qué número tiene el lunes en weekday() y en isoweekday()?"
+        f"{errors[0]}. ¿Siempre se equivoca por la misma cantidad de días?"
     )
 
 
@@ -94,7 +94,6 @@ def test_incidencias_sin_linea_consulta_toda_la_red() -> None:
     result = _incidencias_de_toda_la_red("2026-11-12")
     ids = [incident.get("id") for incident in result.get("incidencias", [])]
     assert "INC-0301" in ids, (
-        f"Sin línea, la herramienta responde {result}. El modelo lo reintenta en bucle: "
-        "busca en Langfuse la traza que tarda más de 40 s. Haz que, sin línea, consulte "
-        "todas las líneas (incidents_on para cada una)."
+        f"Sin línea, la herramienta responde {result}. Busca en Langfuse la traza que "
+        "tarda más de 40 s y mira qué hace el modelo con esa respuesta."
     )

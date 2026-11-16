@@ -1,9 +1,9 @@
 """Misión 5 · El viernes de los despliegues (``uv run check 5``).
 
 Cuatro cambios esperaban despliegue. Comprueba que ninguno se ha quedado a medias, que
-lo inseguro no ha llegado a producción, que producción conserva el tono de Marc y la
-regla del idioma, que el dataset agente ya tiene casos en catalán y en inglés, y que la
-herramienta de próximos trenes funciona.
+lo inseguro no ha llegado a producción, que producción conserva el tono de Marc y las
+reglas del prompt original, que el dataset agente cubre lo que falló en el canary, y que
+la herramienta de próximos trenes funciona.
 """
 
 from datetime import date
@@ -67,22 +67,22 @@ def test_el_tono_de_marc_esta_en_produccion() -> None:
 
     cambios = load_state().blue.cambios
     assert "A" in cambios, (
-        f"Cambios promocionados: {', '.join(cambios) or 'ninguno'}. El cambio A pasa la "
-        "puerta y el canary: prepáralo, súbelo por fases y promociónalo."
+        f"Cambios promocionados: {', '.join(cambios) or 'ninguno'}. Los demás cambios "
+        "se construyen sobre A: tiene que estar en producción."
     )
 
 
 def test_las_devoluciones_sin_normativa_no_llegan_a_produccion() -> None:
-    """El cambio B (devoluciones sin mirar la normativa) no llega a producción"""
+    """Producción no tramita devoluciones que la normativa no permite"""
 
     assert "B" not in load_state().blue.cambios, (
-        "El cambio B está en producción: Nexus tramita devoluciones que la normativa no "
-        "permite. Mira evita_tools_prohibidas en la puerta (uv run release gate)."
+        "Hay en producción un cambio con el que Nexus tramita devoluciones que la "
+        "normativa no permite. ¿Qué tendría que haberlo parado antes de llegar a los viajeros?"
     )
 
 
 def test_produccion_conserva_el_tono_y_la_regla_del_idioma(langfuse_http: httpx.Client) -> None:
-    """Producción tiene el tono de Marc y la regla de responder en el idioma del viajero"""
+    """Producción tiene el tono de Marc y conserva las reglas del prompt original"""
 
     response = langfuse_http.get(
         f"/api/public/v2/prompts/{quote(EXECUTOR_PROMPT_NAME, safe='')}",
@@ -98,26 +98,25 @@ def test_produccion_conserva_el_tono_y_la_regla_del_idioma(langfuse_http: httpx.
         "cambio A (o un cambio construido sobre A)."
     )
     assert "idioma" in text.lower(), (
-        "El prompt de producción no dice que hay que responder en el idioma del viajero. "
-        "¿Has promocionado el prompt corto sin la regla del idioma? Corrige "
-        "release/prompt_corto.py y vuelve a desplegarlo."
+        "Al prompt de producción le falta una regla que tenía el original. Compara los "
+        "dos prompts: ¿a qué viajeros afecta lo que se ha perdido?"
     )
 
 
 def test_el_dataset_agente_tiene_casos_en_catalan_y_en_ingles() -> None:
-    """El dataset agente tiene al menos un caso en catalán y otro en inglés"""
+    """El dataset agente tiene casos que habrían detectado lo que falló en el canary"""
 
     idiomas = {_idioma(case.extra, case.viajero) for case in CASES}
     faltan = _faltan(idiomas)
     assert not faltan, (
-        f"Faltan casos en {' y '.join(faltan)} en evaluation/datasets/agente.py. Escribe el "
-        "mensaje en ese idioma y asígnalo a un viajero que escriba en él: por ejemplo, "
-        'viajero="1002" (Jordi) escribe en catalán y viajero="1013" (James), en inglés.'
+        "A evaluation/datasets/agente.py le faltan casos de algún grupo de viajeros. "
+        "¿Qué grupo falló en el canary sin que la puerta lo viera? La misión explica cómo "
+        "asignar un caso a un viajero."
     )
 
 
 def test_el_dataset_subido_a_langfuse_tiene_esos_casos(langfuse_http: httpx.Client) -> None:
-    """El dataset agente de Langfuse también tiene los casos en catalán y en inglés"""
+    """El dataset agente de Langfuse también tiene esos casos"""
 
     response = langfuse_http.get(
         "/api/public/dataset-items", params={"datasetName": DATASET.name, "limit": 100}
@@ -132,20 +131,20 @@ def test_el_dataset_subido_a_langfuse_tiene_esos_casos(langfuse_http: httpx.Clie
     }
     faltan = _faltan(idiomas)
     assert not faltan, (
-        f"En Langfuse faltan casos en {' y '.join(faltan)}. Súbelos con uv run dataset: la "
-        "puerta solo ve los casos que están en Langfuse."
+        "En Langfuse faltan los casos nuevos del dataset agente. Súbelos con "
+        "uv run dataset agente: la puerta solo ve los casos que están en Langfuse."
     )
 
 
 def test_proximos_trenes_encuentra_trenes_en_una_estacion_normal() -> None:
-    """proximos_trenes da los próximos trenes de una estación normal"""
+    """La herramienta de próximos trenes da los trenes de la L1 en Plaça Major"""
 
     result = proximos("L1", "Plaça Major", date(2026, 11, 16), "08:00")
     assert "error" not in result, f"La herramienta devuelve un error: {result['error']}"
     assert result.get("proximos_trenes"), (
         f"Para la L1 en Plaça Major a las 08:00 la herramienta responde {result}. Mira en "
-        "las trazas del canary qué devolvía a cada llamada, y revisa en "
-        "nexus/tools/proximos.py cómo se busca la estación en el panel de tiempo real."
+        "las trazas del canary qué devolvía a cada llamada y reprodúcelo sin pasar por el "
+        "modelo."
     )
     assert result["proximos_trenes"][0]["hora"] == "08:01", (
         f"El primer tren después de las 08:00 en Plaça Major (L1) pasa a las 08:01, no a "

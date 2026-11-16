@@ -2,7 +2,7 @@
 
 El ticket #4502: Marta (viajera 1017) preguntó si podía subir con la bici un martes a
 las 8:15, Nexus le dijo que sí y le pusieron una multa. Comprueba los evaluadores de RAG
-y que, con la configuración de tu .env, el buscador ya no trae normativa derogada.
+y que, con la configuración de tu .env, el buscador trae lo correcto para Marta.
 """
 
 from typing import Any
@@ -71,7 +71,7 @@ def test_recupera_derogada() -> None:
         value = _value(recupera_derogada(output=output), "recupera_derogada")
         assert value == score, (
             f"Recuperados {output['fragmentos']} ({why}): debería dar {score} y da {value}. "
-            "Pista: el campo vigente de cada documento (load_documents())."
+            "¿Cómo sabes si un documento sigue en vigor? Lo explica la misión."
         )
     nothing = recupera_derogada(output=_retrieved())
     assert nothing == [], (
@@ -108,7 +108,7 @@ def test_abstencion_correcta() -> None:
 
 
 def test_el_caso_de_marta_no_recupera_normativa_derogada() -> None:
-    """Con tu configuración de RAG, la pregunta de Marta no recupera normativa derogada"""
+    """Con tu configuración de RAG, el buscador trae lo correcto para la pregunta de Marta"""
 
     from nexus.rag.retriever import retriever
     from nexus.settings import settings
@@ -120,6 +120,7 @@ def test_el_caso_de_marta_no_recupera_normativa_derogada() -> None:
     assert not repealed, (
         f"Con RAG__STRATEGY={config.strategy}, RAG__CHUNK_SIZE={config.chunk_size}, "
         f"RAG__TOP_K={config.top_k} y RAG__ONLY_CURRENT={str(config.only_current).lower()}, "
-        f"el buscador trae fragmentos derogados: {', '.join(repealed)}. Elige en tu .env "
+        f"el buscador trae fragmentos que no deberían llegarle al modelo: "
+        f"{', '.join(repealed)}. Abre esos documentos en nexus/docs/ y elige en tu .env "
         "la configuración que defiendas con el barrido de experimentos."
     )
