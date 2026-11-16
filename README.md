@@ -12,6 +12,9 @@ que ha hecho está registrado en Langfuse.
 Sigue la guía [00 · Instalación](guias/00-instalacion.md). Cuando termines, `uv run check 0`
 te dirá si tienes todo listo.
 
+Mientras trabajas, apunta lo que vas encontrando en tu [cuaderno de trabajo](CUADERNO.md).
+Ya tiene, capítulo a capítulo, las tablas y los huecos que tienes que rellenar.
+
 ## Las guías
 
 Cada capítulo es un encargo nuevo para el equipo. Cada guía cuenta la historia,
@@ -34,6 +37,7 @@ lo que necesitas saber, la misión paso a paso y cómo comprobar que la has term
 | `nexus/` | El agente: grafo, nodos, prompts, herramientas, datos y buscador de normativa |
 | `nexus/docs/` | La normativa de MdV en la que busca Nexus |
 | `guias/` | Una guía por capítulo |
+| `CUADERNO.md` | Tu cuaderno de trabajo: lo que encuentras y decides en cada capítulo |
 
 ## Comandos
 

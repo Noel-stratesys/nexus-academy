@@ -3,7 +3,8 @@
 > «Hay cuatro cambios esperando para subir a producción. Quiero en
 > producción todos los que sean seguros antes de las 17:00, y ninguno que no lo sea.»
 
-**Tiempo:** 55 minutos · **Comprobación:** `uv run check 5`
+**Tiempo:** 55 minutos · **Comprobación:** `uv run check 5` ·
+**Cuaderno:** sección 05 de [`CUADERNO.md`](../CUADERNO.md)
 
 ## Los cuatro cambios
 
@@ -73,7 +74,8 @@ uv run release rollback --motivo "…"     # green vuelve al 0 %; el cambio sigu
   p95, errores y herramientas por conversación) y deja las trazas en Langfuse. Usa
   `--seed` para cambiar de viajeros y `--concurrencia` para ir más rápido (cuidado con
   los límites del proveedor).
-- **Apunta siempre el motivo** de cada `promote` y `rollback`.
+- **Apunta siempre el motivo** de cada `promote` y `rollback`: en el comando y en la
+  tabla del cuaderno.
 
 ## La misión
 

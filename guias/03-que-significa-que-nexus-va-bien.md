@@ -3,7 +3,8 @@
 > «Me dicen que Nexus va bien. Quiero un número que me lo
 > demuestre, y saber cuánto me puedo fiar de ese número.»
 
-**Tiempo:** 50 minutos · **Comprobación:** `uv run check 3`
+**Tiempo:** 50 minutos · **Comprobación:** `uv run check 3` ·
+**Cuaderno:** sección 03 de [`CUADERNO.md`](../CUADERNO.md)
 
 ## Lo que necesitas saber
 

@@ -134,6 +134,13 @@ mañana?». Escribe `salir` para terminar. En Nexus, «hoy» es el lunes 16 de n
 2026 (lo puedes cambiar con `--dia AAAA-MM-DD`). Busca después tu conversación en
 Tracing: es la traza más reciente.
 
+## Tu cuaderno de trabajo
+
+En [`CUADERNO.md`](../CUADERNO.md) irás apuntando lo que encuentres en cada capítulo:
+ids de trazas, cifras y decisiones, con el porqué. Ya tiene las tablas y los huecos
+preparados: casi todo es marcar una opción o escribir una cifra. Cada guía te dice qué
+sección le toca.
+
 ## Si algo falla
 
 | Si ves… | Haz esto |

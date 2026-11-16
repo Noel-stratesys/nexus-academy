@@ -8,7 +8,7 @@ Metro de Vilaverda abre dos servicios y Nexus tiene que atenderlos desde el prim
 - **El servicio de asistencia** acompaña a viajeros con movilidad reducida o que
   necesitan orientación, con reserva previa.
 
-**Tiempo:** 95 minutos
+**Tiempo:** 95 minutos · **Cuaderno:** sección 06 de [`CUADERNO.md`](../CUADERNO.md)
 
 Esta vez no hay `check`: te evaluamos con un dataset que no ves.
 
@@ -124,6 +124,7 @@ error típico es pasar 80 minutos programando y 0 evaluando.
 - [ ] Los prompts que quieres están en Langfuse con el label `production`.
 - [ ] Tienes al menos dos experimentos en Langfuse y sabes explicar qué decidiste con
   ellos.
+- [ ] Tu cuaderno recoge esos experimentos y lo que decidiste con cada uno.
 - [ ] No has tocado `evaluation/evaluators.py`.
 
 <details>

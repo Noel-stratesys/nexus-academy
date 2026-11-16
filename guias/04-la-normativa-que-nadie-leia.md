@@ -7,7 +7,8 @@
 > «Pregunté a Nexus si podía subir con la bici un martes a las 8:15 y me dijo que sí.
 > Me han puesto una multa de 50 euros.»
 
-**Tiempo:** 40 minutos · **Comprobación:** `uv run check 4`
+**Tiempo:** 40 minutos · **Comprobación:** `uv run check 4` ·
+**Cuaderno:** sección 04 de [`CUADERNO.md`](../CUADERNO.md)
 
 ## Lo que necesitas saber
 
@@ -112,17 +113,8 @@ Comprueba:
 uv run check 4
 ```
 
-Rellena esta tabla con tu barrido; la usaremos al cerrar el capítulo:
-
-| Variante | `recupera_documento` | `recupera_derogada` | `abstencion_correcta` | Tokens por respuesta |
-| --- | --- | --- | --- | --- |
-| `top_k` 2 | | | | |
-| `top_k` 4 | | | | |
-| `top_k` 8 | | | | |
-| `chunk_size` 100 | | | | |
-| `chunk_size` 800 | | | | |
-| solo vigentes | | | | |
-| **La tuya** | | | | |
+Apunta los resultados del barrido en la tabla del cuaderno; la usaremos al cerrar el
+capítulo.
 
 ## Sabrás que lo has hecho si…
 

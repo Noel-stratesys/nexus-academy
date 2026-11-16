@@ -11,7 +11,7 @@ Primero probarás tú los dos prompts en el Playground y te harás una primera i
 Después mirarás qué dicen los viajeros y, por último, desplegarás la versión que elijas.
 
 **Tiempo:** 45 minutos (20 de Playground, 20 de datos y 5 de código) · **Comprobación:**
-`uv run check 1`
+`uv run check 1` · **Cuaderno:** sección 01 de [`CUADERNO.md`](../CUADERNO.md)
 
 ## Lo que necesitas saber
 
@@ -183,7 +183,7 @@ Compara las dos ventanas: ¿cuál consulta la herramienta antes de responder? ¿
 gusta más? ¿Dicen las 05:04 y el martes 17, o cambian o añaden algo que la herramienta
 no dijo?
 
-Apunta tu primera impresión en una frase. Es una hipótesis: una sola pregunta, y tu
+Apunta tu primera impresión en el cuaderno. Es una hipótesis: una sola pregunta, y tu
 opinión, no la de los viajeros. La segunda parte la pone a prueba.
 
 ### Segunda parte: lo que dicen los viajeros
@@ -207,8 +207,8 @@ opinión, no la de los viajeros. La segunda parte la pone a prueba.
 
    pestaña **Config** de la versión 1 y la 2.
 
-Escribe tu diagnóstico en una frase: qué versión gusta más, en qué falla y por qué.
-¿Coincide con tu primera impresión del Playground?
+Escribe tu diagnóstico en el cuaderno, en una frase: qué versión gusta más, en qué falla
+y por qué. ¿Coincide con tu primera impresión del Playground?
 
 ### Tercera parte: en el código
 
