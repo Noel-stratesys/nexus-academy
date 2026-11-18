@@ -7,9 +7,8 @@ y que, con la configuración de tu .env, el buscador trae lo correcto para Marta
 
 from typing import Any
 
-from langfuse import Evaluation
-
 from evaluation.evaluators import abstencion_correcta, recupera_derogada, recupera_documento
+from nexus.checks.evaluadores import comprobar
 
 MARTA_QUESTION = "¿Puedo subir con la bici al metro un martes a las 8:15?"
 VIGENTE = "normativa-viajeros-2026"
@@ -23,18 +22,6 @@ def _retrieved(*doc_ids: str) -> dict[str, Any]:
     return {"fragmentos": [f"{doc_id}#250-{index}" for index, doc_id in enumerate(doc_ids)]}
 
 
-def _value(result: Evaluation | list[Evaluation], evaluator: str) -> float:
-    assert isinstance(result, Evaluation), (
-        f"{evaluator} debe devolver un Evaluation cuando el caso tiene algo que comprobar; "
-        f"ha devuelto {result!r}."
-    )
-    assert result.name == evaluator, (
-        f"El score debe llamarse {evaluator!r} (Evaluation(name=...)); se llama {result.name!r}."
-    )
-    assert isinstance(result.value, int | float), f"{evaluator} debe devolver un número."
-    return float(result.value)
-
-
 def test_recupera_documento() -> None:
     """recupera_documento da 1 si se recuperó algún documento con la respuesta"""
 
@@ -45,18 +32,14 @@ def test_recupera_documento() -> None:
         (_retrieved(DEROGADA, "objetos-perdidos"), 0, "ninguno de los esperados"),
         (_retrieved(), 0, "nada recuperado"),
     ]
-    for output, score, why in cases:
-        value = _value(
-            recupera_documento(output=output, expected_output=expected), "recupera_documento"
-        )
-        assert value == score, (
-            f"Esperados {expected['docs']}, recuperados {output['fragmentos']} ({why}): "
-            f"debería dar {score} y da {value}. Ojo: los ids de fragmento son «doc_id#chunk»."
-        )
-    nothing = recupera_documento(output=_retrieved(VIGENTE), expected_output={"docs": []})
-    assert nothing == [], (
-        "Si el caso no espera documentos (docs vacío) no hay nada que puntuar: devuelve [] "
-        f"(ha devuelto {nothing!r})."
+    for output, score, caso in cases:
+        comprobar(recupera_documento, caso, score, output=output, expected_output=expected)
+    comprobar(
+        recupera_documento,
+        "el caso no espera documentos",
+        None,
+        output=_retrieved(VIGENTE),
+        expected_output={"docs": []},
     )
 
 
@@ -66,18 +49,10 @@ def test_recupera_derogada() -> None:
     cases = [
         (_retrieved(DEROGADA, GUIA_BICIS), 1, "la edición 2024 está derogada"),
         (_retrieved(VIGENTE, GUIA_BICIS), 0, "todo vigente"),
+        (_retrieved(), None, "sin fragmentos recuperados"),
     ]
-    for output, score, why in cases:
-        value = _value(recupera_derogada(output=output), "recupera_derogada")
-        assert value == score, (
-            f"Recuperados {output['fragmentos']} ({why}): debería dar {score} y da {value}. "
-            "¿Cómo sabes si un documento sigue en vigor? Lo explica la misión."
-        )
-    nothing = recupera_derogada(output=_retrieved())
-    assert nothing == [], (
-        "Sin fragmentos recuperados no hay nada que puntuar: devuelve [] "
-        f"(ha devuelto {nothing!r})."
-    )
+    for output, score, caso in cases:
+        comprobar(recupera_derogada, caso, score, output=output)
 
 
 def test_abstencion_correcta() -> None:
@@ -86,25 +61,20 @@ def test_abstencion_correcta() -> None:
     answer = "Sí: las bicicletas plegadas pueden subir siempre, también en hora punta."
     abstention = "No consta en la normativa de Metro de Vilaverda si se puede."
     cases = [
-        (True, answer, 1, "debía responder y respondió"),
-        (True, abstention, 0, "debía responder y se abstuvo"),
-        (False, abstention, 1, "debía abstenerse y se abstuvo"),
-        (False, answer, 0, "debía abstenerse y se inventó una respuesta"),
+        ({"responde": True}, answer, 1, "debía responder y respondió"),
+        ({"responde": True}, abstention, 0, "debía responder y se abstuvo"),
+        ({"responde": False}, abstention, 1, "debía abstenerse y se abstuvo"),
+        ({"responde": False}, answer, 0, "debía abstenerse y se inventó una respuesta"),
+        ({}, answer, None, "el caso no dice si hay respuesta"),
     ]
-    for responde, text, score, why in cases:
-        result = abstencion_correcta(
-            output={"respuesta": text}, expected_output={"responde": responde}
+    for expected_output, text, score, caso in cases:
+        comprobar(
+            abstencion_correcta,
+            caso,
+            score,
+            output={"respuesta": text},
+            expected_output=expected_output,
         )
-        value = _value(result, "abstencion_correcta")
-        assert value == score, (
-            f"Con responde={responde} y la respuesta «{text}» ({why}): "
-            f"debería dar {score} y da {value}."
-        )
-    nothing = abstencion_correcta(output={"respuesta": answer}, expected_output={})
-    assert nothing == [], (
-        "Si el caso no dice si se puede responder («responde») no hay nada que puntuar: "
-        f"devuelve [] (ha devuelto {nothing!r})."
-    )
 
 
 def test_el_caso_de_marta_no_recupera_normativa_derogada() -> None:

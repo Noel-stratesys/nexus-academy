@@ -17,6 +17,8 @@ Status = Literal["passed", "failed", "skipped"]
 
 # Las pistas largas no ayudan: se recortan a unas pocas líneas.
 MAX_HINT_LINES = 6
+# De lo que imprime el test (los print del alumno), se enseñan las últimas líneas.
+MAX_PRINT_LINES = 20
 
 
 @dataclass
@@ -28,6 +30,8 @@ class Outcome:
     extra: bool
     status: Status = "skipped"
     hint: str = ""
+    # Lo que se imprimió con print en la comprobación que ha fallado.
+    printed: str = ""
 
 
 @dataclass(eq=False)  # pluggy guarda los plugins en conjuntos: deben ser hashables
@@ -63,6 +67,7 @@ class ResultCollector:
             outcome.status = "passed" if report.passed else report.outcome
             if call.excinfo is not None and not report.passed:
                 outcome.hint = hint_from(call.excinfo.value)
+                outcome.printed = _tail(report.capstdout, MAX_PRINT_LINES)
         return report
 
     @property
@@ -106,6 +111,15 @@ def hint_from(error: BaseException) -> str:
 
 def _first_lines(text: str) -> str:
     return "\n".join(text.strip().splitlines()[:MAX_HINT_LINES])
+
+
+def _tail(text: str, count: int) -> str:
+    """Las últimas ``count`` líneas de ``text``, avisando si se han recortado."""
+
+    lines = text.rstrip().splitlines()
+    if len(lines) <= count:
+        return "\n".join(lines)
+    return "\n".join([f"(… {len(lines) - count} líneas antes)", *lines[-count:]])
 
 
 def _last_lines(text: str) -> str:

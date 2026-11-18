@@ -76,6 +76,9 @@ def format_outcome(outcome: Outcome) -> str:
     if outcome.status != "passed" and outcome.hint:
         prefix = "Pista: " if outcome.status == "failed" else "Omitida: "
         line += "\n" + _indent(prefix + outcome.hint, "      ")
+    if outcome.status == "failed" and outcome.printed:
+        printed = "\n".join(f"        {text}" for text in outcome.printed.splitlines())
+        line += "\n      Lo que has imprimido:\n" + printed
     return line
 
 
