@@ -19,7 +19,7 @@ from nexus.decisions import (
     criteria_text,
     empty_request_decision,
 )
-from nexus.llm.models import chat_model
+from nexus.llm.models import MALFORMED_OUTPUT_RETRIES, chat_model, is_malformed_output
 from nexus.llm.prompts import chat_template, langfuse_prompt, model_for
 from nexus.prompts import ORCHESTRATOR_PROMPT_NAME
 from nexus.state import GraphState
@@ -53,17 +53,27 @@ async def classify_request(
 
     Dentro del grafo, la llamada hereda la configuración de la ejecución. Fuera de él
     (por ejemplo, en un experimento del orquestador), pásala con ``with_langfuse()``.
+
+    El veredicto se pide como JSON con esquema (``method="json_schema"``), no como una
+    llamada a herramienta: el modelo solo escribe ``{"verdict": "..."}``, sin las
+    etiquetas de herramienta en las que a veces se equivoca, y gasta menos tokens. Si
+    aun así escribe mal la salida, la llamada se repite al momento.
     """
 
     prompt = langfuse_prompt(ORCHESTRATOR_PROMPT_NAME)
     model = chat_model(model_for(prompt, context.models.orchestrator))
-    structured = model.with_structured_output(ModelVerdict)
+    structured = model.with_structured_output(ModelVerdict, method="json_schema")
     chain = (chat_template(prompt) | structured).with_config(run_name="orchestrator")
-    answer = cast(
-        ModelVerdict,
-        await chain.ainvoke({"messages": list(messages), "criteria": criteria_text()}, config),
-    )
-    return answer.decision()
+    inputs = {"messages": list(messages), "criteria": criteria_text()}
+    for attempt in range(MALFORMED_OUTPUT_RETRIES + 1):
+        try:
+            answer = cast(ModelVerdict, await chain.ainvoke(inputs, config))
+            return answer.decision()
+        except Exception as error:
+            if attempt == MALFORMED_OUTPUT_RETRIES or not is_malformed_output(error):
+                raise
+            logger.info("El modelo escribió mal el veredicto; se repite la llamada: %s", error)
+    raise AssertionError("inalcanzable: el bucle devuelve o lanza")
 
 
 def _conversation(messages: Sequence[BaseMessage]) -> list[BaseMessage]:

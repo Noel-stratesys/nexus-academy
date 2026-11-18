@@ -17,6 +17,7 @@ from langchain.agents.middleware import (
     HumanInTheLoopMiddleware,
     ModelCallLimitMiddleware,
     ModelRequest,
+    ModelRetryMiddleware,
     ToolRetryMiddleware,
     wrap_model_call,
 )
@@ -25,7 +26,7 @@ from langchain_core.tools import BaseTool
 
 from nexus.calendar import describe
 from nexus.context import Context, run_context
-from nexus.llm.models import chat_model
+from nexus.llm.models import MALFORMED_OUTPUT_RETRIES, chat_model, is_malformed_output
 from nexus.llm.prompts import chat_template, langfuse_prompt, model_for
 from nexus.prompts import EXECUTOR_PROMPT_NAME
 from nexus.settings import settings
@@ -92,6 +93,15 @@ def build_executor_agent(flags: frozenset[str] = frozenset()) -> Any:
     tools = tools_for(flags)
     middleware: list[Any] = [
         _prompt_and_model(tools),
+        # Si el modelo escribe mal una llamada a herramienta, se repite al momento.
+        ModelRetryMiddleware(
+            max_retries=MALFORMED_OUTPUT_RETRIES,
+            retry_on=is_malformed_output,
+            on_failure="error",
+            initial_delay=0.5,
+            backoff_factor=0.0,
+            jitter=False,
+        ),
         ModelCallLimitMiddleware(run_limit=MAX_MODEL_CALLS, exit_behavior="end"),
         ToolRetryMiddleware(
             max_retries=settings.executor_tool_max_retries,

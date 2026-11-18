@@ -6,12 +6,34 @@ Es el único sitio que sabe de proveedores: el resto del código pide un modelo 
 from typing import Any, cast
 
 from langchain.chat_models import init_chat_model
+from langchain_core.exceptions import OutputParserException
 from langchain_core.language_models.chat_models import BaseChatModel
+from pydantic import ValidationError
 
 from nexus.settings import ModelConfig, settings
 
 # Los proveedores en la nube limitan las peticiones por minuto: se reintentan los 429.
 CLOUD_MAX_RETRIES = 6
+
+# Veces que se repite al momento una llamada en la que el modelo escribió mal su salida.
+MALFORMED_OUTPUT_RETRIES = 2
+
+# Códigos de error de Groq cuando el modelo escribe mal una llamada a herramienta
+# (``tool_use_failed``) o un JSON que no cumple el esquema (``json_validate_failed``).
+MALFORMED_OUTPUT_CODES = ("tool_use_failed", "json_validate_failed")
+
+
+def is_malformed_output(error: BaseException) -> bool:
+    """El modelo escribió mal la llamada a herramienta o el JSON que se le pedía.
+
+    No es un fallo de la petición sino una errata del modelo: repetir la misma llamada
+    suele salir bien, así que se reintenta al momento, sin esperar.
+    """
+
+    if isinstance(error, OutputParserException | ValidationError):
+        return True
+    return any(code in str(error) for code in MALFORMED_OUTPUT_CODES)
+
 
 # Modelos de Groq que "piensan en voz alta" antes de responder. Su razonamiento no debe
 # acabar en la respuesta al viajero ni confundir al orquestador.
