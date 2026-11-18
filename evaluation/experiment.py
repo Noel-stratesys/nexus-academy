@@ -16,6 +16,7 @@ metadata, y se puede comparar con otras en la pestaña del dataset.
 """
 
 import argparse
+import gc
 import statistics
 import sys
 from collections import defaultdict
@@ -71,6 +72,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--concurrencia", type=int, default=1, help="Casos a la vez (cuidado con los límites)."
     )
     parser.add_argument("--detalle", action="store_true", help="Muestra el resultado de cada caso.")
+    parser.add_argument(
+        "--limite",
+        type=int,
+        metavar="N",
+        help="Solo los N primeros casos, por orden de case_id (para probar rápido).",
+    )
     return parser.parse_args(argv)
 
 
@@ -198,6 +205,9 @@ def run(args: argparse.Namespace) -> list[dict[str, float]]:
     items = list(dataset.items)
     if not items:
         sys.exit(f"El dataset {definition.name} no tiene casos. Súbelo con: uv run dataset")
+    if args.limite:
+        items.sort(key=lambda item: (item.metadata or {}).get("case_id", ""))
+        items = items[: args.limite]
 
     metadata = {
         "label": label,
@@ -228,6 +238,11 @@ def run(args: argparse.Namespace) -> list[dict[str, float]]:
             max_concurrency=args.concurrencia,
             metadata={**metadata, "repeticion": str(repetition)},
         )
+        # Cada run_experiment usa su propio bucle de eventos y lo cierra al acabar. Los
+        # clientes HTTP del modelo que quedan vivos intentarían cerrarse durante el run
+        # siguiente, en un bucle que no es el suyo, y llenarían la salida de errores
+        # «Event loop is closed». Liberarlos ahora, sin bucle activo, los cierra en silencio.
+        gc.collect()
         if args.detalle:
             print(result.format(include_item_results=True))
         scores = {
