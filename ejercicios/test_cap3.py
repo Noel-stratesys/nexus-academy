@@ -1,20 +1,24 @@
 """Misión 3 · ¿Qué significa que Nexus va bien? (``uv run check 3``).
 
-Comprueba los evaluadores de código de ``evaluation/evaluators.py`` con casos fijos y
-que tu juez «fidelidad» coincide con las anotaciones humanas «fidelidad_humana».
+Comprueba el evaluador ``usa_tools_esperadas`` de ``evaluation/evaluators.py`` con casos fijos y
+que los dos jueces coinciden con tus anotaciones sobre las 10 trazas del capítulo:
+
+- tu juez «tono» con «tono_humano»;
+- la plantilla de Langfuse «answer_relevance» con «relevancia_humana».
 """
 
 from typing import Any
 
 import httpx
 import pytest
-from langfuse import Evaluation
 
-from evaluation.evaluators import usa_tools_esperadas, veredicto_correcto
+from evaluation.evaluators import usa_tools_esperadas
+from nexus.checks.evaluadores import comprobar
 
 MIN_KAPPA = 0.6
 MIN_PAIRS = 10
-HUMAN_SCORE, JUDGE_SCORE = "fidelidad_humana", "fidelidad"
+TONO = ("tono_humano", "tono")
+RELEVANCIA = ("relevancia_humana", "answer_relevance")
 
 
 def _tools(*names: str) -> dict[str, Any]:
@@ -23,52 +27,24 @@ def _tools(*names: str) -> dict[str, Any]:
     return {"tools": [{"name": name, "args": {}} for name in names]}
 
 
-def _value(result: Evaluation | list[Evaluation], evaluator: str) -> float:
-    assert isinstance(result, Evaluation), (
-        f"{evaluator} debe devolver un Evaluation cuando el caso tiene algo que comprobar; "
-        f"ha devuelto {result!r}."
-    )
-    assert result.name == evaluator, (
-        f"El score debe llamarse {evaluator!r} (Evaluation(name=...)); se llama {result.name!r}."
-    )
-    assert isinstance(result.value, int | float), f"{evaluator} debe devolver un número."
-    return float(result.value)
-
-
-def test_veredicto_correcto() -> None:
-    """veredicto_correcto da 1 si el orquestador acierta, 0 si no y nada si no hay veredicto"""
-
-    hit = veredicto_correcto(output={"verdict": "valid"}, expected_output={"verdict": "valid"})
-    assert _value(hit, "veredicto_correcto") == 1, (
-        "Esperado «valid» y obtenido «valid» debería puntuar 1."
-    )
-    miss = veredicto_correcto(output={"verdict": "valid"}, expected_output={"verdict": "empty"})
-    assert _value(miss, "veredicto_correcto") == 0, (
-        "Esperado «empty» y obtenido «valid» debería puntuar 0."
-    )
-    none = veredicto_correcto(output={"verdict": None}, expected_output={"verdict": "valid"})
-    assert _value(none, "veredicto_correcto") == 0, (
-        "Si el orquestador no da veredicto (None) y se esperaba «valid», es un 0."
-    )
-    nothing = veredicto_correcto(output={"verdict": "valid"}, expected_output={})
-    assert nothing == [], (
-        "Si el caso no tiene «verdict» esperado no hay nada que puntuar: devuelve [] "
-        f"(ha devuelto {nothing!r})."
-    )
-
-
 def test_usa_tools_esperadas() -> None:
     """usa_tools_esperadas puntúa la proporción de herramientas esperadas que se usaron"""
 
     cases = [
-        (["consultar_horario"], _tools("consultar_horario"), 1.0, "la única esperada, usada"),
-        (["consultar_horario"], _tools(), 0.0, "ninguna herramienta usada"),
-        (["consultar_horario"], _tools("consultar_tarifas"), 0.0, "otra herramienta"),
+        (["consultar_horario"], _tools("consultar_horario"), 1, "la única esperada, usada"),
+        (["consultar_horario"], _tools(), 0, "ninguna herramienta usada"),
+        (["consultar_horario"], _tools("consultar_tarifas"), 0, "otra herramienta"),
         (
             ["consultar_horario|buscar_normativa"],
             _tools("buscar_normativa"),
-            1.0,
+            1,
             "«a|b» se cumple con b",
+        ),
+        (
+            ["consultar_horario|buscar_normativa"],
+            _tools("consultar_horario", "buscar_normativa"),
+            1,
+            "«a|b» con las dos usadas cuenta una sola vez",
         ),
         (
             ["consultar_incidencias", "consultar_tarifas"],
@@ -79,67 +55,87 @@ def test_usa_tools_esperadas() -> None:
         (
             ["consultar_incidencias", "consultar_horario|buscar_normativa"],
             _tools("consultar_incidencias", "consultar_horario", "consultar_tarifas"),
-            1.0,
+            1,
             "las dos esperadas, con una herramienta de más",
         ),
     ]
-    for expected, output, score, why in cases:
-        result = usa_tools_esperadas(output=output, expected_output={"tools": expected})
-        value = _value(result, "usa_tools_esperadas")
-        used = [call["name"] for call in output["tools"]]
-        assert value == pytest.approx(score), (
-            f"Esperadas {expected}, usadas {used} ({why}): debería dar {score} y da {value}."
+    for expected, output, score, caso in cases:
+        comprobar(
+            usa_tools_esperadas, caso, score, output=output, expected_output={"tools": expected}
         )
 
-    for expected_output in ({"tools": []}, {}):
-        nothing = usa_tools_esperadas(
-            output=_tools("consultar_horario"), expected_output=expected_output
+    comprobar(
+        usa_tools_esperadas,
+        "la tarea terminó con un error y output no tiene tools",
+        0,
+        output={"error": "TimeoutError: el modelo no respondió"},
+        expected_output={"tools": ["consultar_horario"]},
+    )
+    comprobar(
+        usa_tools_esperadas,
+        "lista de esperadas vacía",
+        None,
+        output=_tools("consultar_horario"),
+        expected_output={"tools": []},
+    )
+    comprobar(
+        usa_tools_esperadas,
+        "el caso no tiene la clave tools",
+        None,
+        output=_tools("consultar_horario"),
+        expected_output={},
+    )
+
+
+def _pairs(client: httpx.Client, human_name: str, judge_name: str) -> list[tuple[float, float]]:
+    """(persona, juez) en niveles 0, 0,5 y 1, para cada traza con los dos scores."""
+
+    from evaluation.agreement import collect_pair
+
+    try:
+        human, judge, unknown_h, unknown_j = collect_pair(client, human_name, judge_name)
+    except httpx.HTTPError as error:
+        pytest.fail(f"No he podido leer los scores de Langfuse ({type(error).__name__}).")
+    for name, unknown in ((human_name, unknown_h), (judge_name, unknown_j)):
+        assert not unknown, (
+            f"«{name}» tiene etiquetas que no sé convertir a 0, 0,5 o 1: "
+            f"{', '.join(sorted(set(unknown)))}. El juez tiene que devolver las mismas "
+            f"etiquetas que tu score «{human_name}» (Settings → Scores)."
         )
-        assert nothing == [], (
-            f"Con expected_output={expected_output} no hay herramientas que comprobar: "
-            f"devuelve [] (ha devuelto {nothing!r})."
-        )
-
-
-def _pairs(client: httpx.Client) -> list[tuple[int, int]]:
-    """(persona, juez) binarizados, para cada traza con los dos scores."""
-
-    from evaluation.agreement import binarize, fetch_scores
-
-    def by_trace(name: str) -> dict[str, int]:
-        found: dict[str, int] = {}
-        for score in fetch_scores(client, name):
-            subject = score.get("subject") or {}
-            trace_id = (
-                subject.get("id") if subject.get("kind") == "trace" else subject.get("traceId")
-            ) or score.get("traceId")
-            if trace_id:
-                found[trace_id] = binarize(score, 0.5)
-        return found
-
-    human, judge = by_trace(HUMAN_SCORE), by_trace(JUDGE_SCORE)
     return [(human[key], judge[key]) for key in sorted(human.keys() & judge.keys())]
 
 
-def test_el_juez_coincide_con_las_personas(langfuse_http: httpx.Client) -> None:
-    """El juez «fidelidad» coincide con «fidelidad_humana» (kappa de Cohen de 0,6 o más)"""
+def _comprobar_acuerdo(client: httpx.Client, human_name: str, judge_name: str) -> None:
+    from evaluation.agreement import weighted_kappa
 
-    from evaluation.agreement import cohen_kappa
-
-    try:
-        pairs = _pairs(langfuse_http)
-    except httpx.HTTPError as error:
-        pytest.fail(f"No he podido leer los scores de Langfuse ({type(error).__name__}).")
+    pairs = _pairs(client, human_name, judge_name)
     assert pairs, (
-        f"Todavía no hay trazas con los dos scores, «{HUMAN_SCORE}» y «{JUDGE_SCORE}». "
-        "Crea el juez en Evaluators, deja que puntúe y anota en tu cola las mismas trazas."
+        f"Todavía no hay trazas con los dos scores, «{human_name}» y «{judge_name}». "
+        "Anota en tu cola las 10 trazas con la etiqueta cap3, crea el juez en Evaluators y "
+        "deja que puntúe esas mismas trazas (si no las ves en Tracing: uv run trazas-cap3)."
     )
     assert len(pairs) >= MIN_PAIRS, (
-        f"Solo {len(pairs)} trazas tienen los dos scores: anota al menos {MIN_PAIRS} "
-        "(la misión pide 15) para que la kappa signifique algo."
+        f"Solo {len(pairs)} trazas tienen los dos scores: anota las {MIN_PAIRS} trazas del "
+        "capítulo (etiqueta cap3) para que la kappa signifique algo."
     )
-    kappa = cohen_kappa(pairs)
+    assert any(human == 0.5 for human, _ in pairs), (
+        f"Ninguna de tus notas de «{human_name}» es la categoría del medio. ¿Has creado el "
+        "score con tres categorías? Hay trazas que no están ni bien ni mal."
+    )
+    kappa = weighted_kappa(pairs)
     assert kappa >= MIN_KAPPA, (
-        f"Kappa de Cohen: {kappa:.2f} con {len(pairs)} trazas. Ejecuta uv run judge-agreement, "
-        "mira los desacuerdos y ajusta la rúbrica del juez hasta llegar a 0,6."
+        f"Kappa ponderada de «{judge_name}»: {kappa:.2f} con {len(pairs)} trazas. Ejecuta "
+        "uv run judge-agreement, mira los desacuerdos y ajusta el juez hasta llegar a 0,6."
     )
+
+
+def test_tu_juez_de_tono_coincide_contigo(langfuse_http: httpx.Client) -> None:
+    """Tu juez «tono» coincide con «tono_humano» (kappa ponderada de 0,6 o más)"""
+
+    _comprobar_acuerdo(langfuse_http, *TONO)
+
+
+def test_la_plantilla_de_relevancia_coincide_contigo(langfuse_http: httpx.Client) -> None:
+    """La plantilla «answer_relevance» coincide con «relevancia_humana» (kappa de 0,6 o más)"""
+
+    _comprobar_acuerdo(langfuse_http, *RELEVANCIA)

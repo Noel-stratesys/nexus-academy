@@ -10,7 +10,7 @@ import pytest
 from langfuse import Evaluation
 
 from evaluation import evaluators as ev
-from evaluation.agreement import binarize, cohen_kappa
+from evaluation.agreement import category_levels, to_level, weighted_kappa
 from evaluation.datasets import DATASETS
 from evaluation.tasks import _fragments
 
@@ -40,6 +40,14 @@ def test_binary_datasets_are_balanced() -> None:
 
 
 # --- evaluadores ---------------------------------------------------------------
+
+
+def test_veredicto_correcto() -> None:
+    expected = {"verdict": "valid"}
+
+    assert _value(ev.veredicto_correcto(output={"verdict": "valid"}, expected_output=expected)) == 1
+    assert _value(ev.veredicto_correcto(output={"verdict": "empty"}, expected_output=expected)) == 0
+    assert ev.veredicto_correcto(output={}, expected_output={}) == []
 
 
 def test_evita_tools_prohibidas_counts_proposed_actions() -> None:
@@ -93,17 +101,40 @@ def test_fragments_reads_the_ids_returned_by_buscar_normativa() -> None:
     ("score", "expected"),
     [
         ({"dataType": "NUMERIC", "value": 0.8}, 1),
+        ({"dataType": "NUMERIC", "value": 0.4}, 0.5),
         ({"dataType": "NUMERIC", "value": 0.2}, 0),
         ({"dataType": "BOOLEAN", "value": 1}, 1),
-        ({"dataType": "CATEGORICAL", "stringValue": "Fiel"}, 1),
-        ({"dataType": "CATEGORICAL", "stringValue": "inventa"}, 0),
+        ({"dataType": "CATEGORICAL", "stringValue": "0.5"}, 0.5),
+        ({"dataType": "CATEGORICAL", "stringValue": "0,5"}, 0.5),
+        ({"dataType": "CATEGORICAL", "stringValue": "Relevant"}, 1),
+        ({"dataType": "CATEGORICAL", "stringValue": "Partially relevant"}, 0.5),
+        ({"dataType": "CATEGORICAL", "stringValue": "Not relevant"}, 0),
+        ({"dataType": "CATEGORICAL", "stringValue": "inventa"}, None),
     ],
 )
-def test_binarize(score: dict[str, Any], expected: int) -> None:
-    assert binarize(score, threshold=0.5) == expected
+def test_to_level(score: dict[str, Any], expected: float | None) -> None:
+    assert to_level(score) == expected
 
 
-def test_cohen_kappa() -> None:
-    assert cohen_kappa([(1, 1), (0, 0), (1, 1), (0, 0)]) == 1
-    # Coinciden la mitad de las veces, lo mismo que por azar: kappa 0.
-    assert cohen_kappa([(1, 1), (1, 0), (0, 1), (0, 0)]) == 0
+def test_category_levels_por_posicion() -> None:
+    tono = [
+        {"label": "cercano", "value": 2},
+        {"label": "brusco", "value": 0},
+        {"label": "seco", "value": 1},
+    ]
+    labels = category_levels(tono)
+    assert labels == {"brusco": 0, "seco": 0.5, "cercano": 1}
+    score = {"dataType": "CATEGORICAL", "value": "Seco"}
+    assert to_level(score, labels) == 0.5
+    # Sin configuración, se prueba con la etiqueta.
+    assert to_level({"dataType": "CATEGORICAL", "value": "poco relevante"}) == 0.5
+
+
+def test_weighted_kappa() -> None:
+    assert weighted_kappa([(1, 1), (0, 0), (0.5, 0.5), (0, 0)]) == 1
+    # Con dos niveles es la kappa de Cohen: coinciden lo mismo que por azar, kappa 0.
+    assert weighted_kappa([(1, 1), (1, 0), (0, 1), (0, 0)]) == 0
+    # Fallar por medio punto cuesta menos que fallar por uno entero.
+    cerca = weighted_kappa([(0, 0.5), (0.5, 0.5), (1, 1), (0, 0), (1, 0.5)])
+    lejos = weighted_kappa([(0, 1), (0.5, 0.5), (1, 1), (0, 0), (1, 0)])
+    assert cerca > lejos

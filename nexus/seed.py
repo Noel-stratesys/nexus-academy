@@ -11,7 +11,9 @@ Deja en el proyecto de Langfuse:
    del executor lleva ``production``: elegirla es la misión del capítulo 1. Si un prompt
    ya tiene el label ``production`` en otra versión, no se lo quita.
 2. Los datasets de evaluación (``evaluation/datasets``).
-3. El dashboard «Nexus en producción».
+3. El dashboard «Nexus en producción» y las 10 trazas del capítulo 3 para calibrar los
+   jueces (etiqueta ``cap3``), si faltan. ``--forzar`` no las toca, porque llevan las
+   anotaciones del alumno; para reponerlas: ``uv run trazas-cap3 --forzar``.
 4. Las conversaciones del 26 de octubre al 15 de noviembre de 2026, con las valoraciones
    de los viajeros (score ``user_feedback``).
 
@@ -517,6 +519,7 @@ def main(argv: list[str] | None = None) -> None:
             sys.exit("✘ Langfuse no acepta las claves del .env (LANGFUSE_PUBLIC_KEY/SECRET_KEY).")
 
         from evaluation.datasets import DATASETS, upload
+        from evaluation.trazas_cap3 import cargar as cargar_trazas_cap3
         from nexus.dashboard import ensure_dashboard
 
         _escribir("Prompts del historial:")
@@ -526,6 +529,8 @@ def main(argv: list[str] | None = None) -> None:
             _escribir(f"  {nombre}: {upload(definition, langfuse)} casos")
         _escribir("\nDashboard:")
         ensure_dashboard(langfuse, report=_escribir)
+        _escribir("\nTrazas del capítulo 3 (para calibrar los jueces):")
+        cargar_trazas_cap3(langfuse, buffer=buffer, report=_escribir)
         _escribir("\nHistorial (26 de octubre – 15 de noviembre de 2026):")
     else:
         versiones = _prompts_locales()

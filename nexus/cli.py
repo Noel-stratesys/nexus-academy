@@ -20,6 +20,7 @@ COMMANDS = {
     "dataset": "Sube a Langfuse los datasets definidos en evaluation/datasets.",
     "experiment": "Ejecuta Nexus sobre un dataset y puntúa cada caso (--repeat, --label...).",
     "judge-agreement": "Compara las notas del LLM-as-a-judge con las anotaciones humanas.",
+    "trazas-cap3": "Repone las 10 trazas del capítulo 3 (uv run seed ya las sube).",
     "seed": "Carga en Langfuse el historial de tres semanas de Nexus.",
     "check": "Comprueba una misión: uv run check 0 … uv run check 5.",
     "release": "Despliegue por fases: status, prepare, shift, rollback, promote.",
@@ -31,7 +32,7 @@ COMMANDS = {
 def show_help() -> None:
     print("Comandos disponibles (ejecútalos con `uv run <comando>`):\n")
     for name, text in COMMANDS.items():
-        print(f"  {name:<12} {text}")
+        print(f"  {name:<15} {text}")
 
 
 async def _ask_approval(actions: list[dict[str, Any]]) -> list[str]:
