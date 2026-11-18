@@ -57,7 +57,7 @@ rompe en cuanto cambia el modelo.
 | Precisión | ¿Qué parte de lo que trae es relevante? | `precision_recuperacion` |
 | Recupera derogada | ¿Trae normas que ya no están vigentes? | `recupera_derogada` |
 | Abstención | ¿Dice «no consta» cuando no hay respuesta? | `abstencion_correcta` |
-| Fidelidad | ¿Solo afirma lo que dicen los fragmentos? | El juez del capítulo 3 |
+| Fidelidad | ¿Solo afirma lo que dicen los fragmentos? | Un juez en Langfuse, como la plantilla *Check Answer Groundedness* |
 
 El dataset `nexus/rag` tiene 15 preguntas con respuesta y 15 sin ella. Si no, un sistema
 que siempre contesta algo sacaría buena nota.

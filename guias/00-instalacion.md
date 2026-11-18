@@ -167,7 +167,8 @@ Todo lo que harás desde la terminal empieza por `uv run`. `uv run help` los lis
 | `uv run prompts --label X` | Publicar los prompts del código como versión nueva | 1 |
 | `uv run dataset` | Subir los datasets a Langfuse | 2, 3 y 5 |
 | `uv run experiment <dataset>` | Ejecutar Nexus sobre un dataset y puntuarlo | 3, 4 y 5 |
-| `uv run judge-agreement` | Comparar el juez con las anotaciones humanas | 3 |
+| `uv run trazas-cap3` | Reponer las 10 trazas para calibrar los jueces (ya las sube `seed`) | 3 |
+| `uv run judge-agreement` | Comparar los jueces con las anotaciones humanas | 3 |
 | `uv run index --buscar "…"` | Probar el buscador de normativa | 4 |
 | `uv run release …` · `uv run simulate` | Desplegar por fases y simular viajeros | 5 |
 

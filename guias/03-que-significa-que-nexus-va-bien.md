@@ -1,6 +1,4 @@
-# 03 · ¿Qué significa que Nexus va bien?
-
-> «Me dicen que Nexus va bien. Quiero un número que me lo
+> Me dicen que Nexus va bien. Quiero un número que me lo  
 > demuestre, y saber cuánto me puedo fiar de ese número.»
 
 **Tiempo:** 50 minutos · **Comprobación:** `uv run check 3` ·
@@ -14,7 +12,7 @@
 | --- | --- | --- | --- |
 | Nodo | ¿El orquestador clasificó bien? | Código | `veredicto_correcto` |
 | Trayectoria | ¿Usó las herramientas correctas? ¿Evitó las prohibidas? ¿Pidió aprobación? | Código | `usa_tools_esperadas`, `evita_tools_prohibidas`, `aprobacion_correcta` |
-| Respuesta | ¿Da los datos que debe? ¿Es fiel a lo que dijeron las herramientas? | Código + juez | `menciona_datos`, `fidelidad` |
+| Respuesta | ¿Da los datos que debe? ¿Responde a lo que se preguntó? ¿Con el tono adecuado? | Código + juez | `menciona_datos`, `answer_relevance`, `tono` |
 | Persona | ¿Estamos de acuerdo con el juez? | Anotación | annotation queue |
 
 Una respuesta correcta puede venir de un camino incorrecto (acertar un horario sin
@@ -46,14 +44,21 @@ _case(
 Dos reglas para que el dataset sea útil:
 
 - **Equilibrado.** Si mides una clasificación, tantos casos de cada clase.
-  `nexus/orquestador` tiene 12 peticiones válidas y 12 no válidas: si no, un orquestador
-  que siempre dijera «válida» sacaría buena nota.
+`nexus/orquestador` tiene 12 peticiones válidas y 12 no válidas: si no, un orquestador
+que siempre dijera «válida» sacaría buena nota.
 - **Cada fallo, un caso.** Un fallo encontrado en producción entra en el dataset, como
-  el de Pere en el capítulo 2. Así cada experimento comprueba que no ha vuelto.
+el de Pere en el capítulo 2. Así cada experimento comprueba que no ha vuelto.
+
+**Un juez se puede escribir o se puede reutilizar.** Langfuse trae plantillas de jueces
+ya hechas (*Check Answer Relevance*, *Check Answer Groundedness*…): ahorran trabajo, pero
+alguien las escribió sin conocer tu caso. Un criterio propio, como el tono que debe tener
+Nexus con un viajero, lo tienes que definir tú: qué es un 0, qué es un 0,5 y qué es un 1.
 
 **El juez también se equivoca.** Antes de fiarte de él, compáralo con personas sobre las
 mismas trazas. La **kappa de Cohen** mide su acuerdo descontando el que saldría por
-azar: si el juez dijera siempre «bien», acertaría mucho sin saber nada.
+azar: si el juez dijera siempre «bien», acertaría mucho sin saber nada. Con notas de tres
+niveles (0, 0,5 y 1) se usa la **kappa ponderada**: un 0 frente a un 0,5 es medio
+desacuerdo; un 0 frente a un 1, uno entero.
 
 | Kappa | Qué significa |
 | --- | --- |
@@ -70,51 +75,71 @@ caso son 4 puntos.
 
 ### En el código
 
-1. Abre `evaluation/evaluators.py` y completa dos evaluadores. Cada uno recibe la
-   salida de Nexus (`output`) y lo esperado (`expected_output`) y devuelve un
-   `Evaluation(name=..., value=...)`:
-   - `veredicto_correcto`: 1 si el veredicto del orquestador (`output["verdict"]`)
-     coincide con el esperado y 0 si no. Si el caso no tiene veredicto esperado, no hay
-     nada que puntuar: devuelve `[]`.
-   - `usa_tools_esperadas`: la proporción de herramientas esperadas que se usaron
-     (`output["tools"]` es la lista de llamadas, cada una con su `name`). `"a|b"` se
-     cumple con cualquiera de las dos. Una de dos es 0,5; usar herramientas de más no
-     resta. Sin herramientas esperadas, devuelve `[]`.
+1. Abre `evaluation/evaluators.py` y completa `usa_tools_esperadas`. Un evaluador
+
+   recibe la salida de Nexus (`output`) y lo esperado del caso (`expected_output`) y
+      devuelve un `Evaluation(name=..., value=...)`, o `[]` si el caso no tiene nada que
+      puntuar. `veredicto_correcto`, justo encima, ya está hecho: te sirve de modelo.
+
+      `usa_tools_esperadas` da la proporción de herramientas esperadas que usó Nexus. Las
+      condiciones y un ejemplo están en su docstring.
 2. Comprueba que los datasets están en Langfuse (pestaña **Datasets**). Si no, súbelos:
-
    ```bash
-   uv run dataset
+      uv run dataset
    ```
-
 3. Lanza los experimentos:
-
    ```bash
-   uv run experiment orquestador
-   uv run experiment agente --repeat 3
+      uv run experiment orquestador
+      uv run experiment agente --repeat 3
    ```
 
-   Al terminar verás la media de cada score, su dispersión entre repeticiones y el
-   resultado por categoría. Cada ejecución queda en Langfuse como un *run* del dataset:
-   ábrelo y compara los runs entre sí.
+      Al terminar verás la media de cada score, su dispersión entre repeticiones y el
+      resultado por categoría. Cada ejecución queda en Langfuse como un *run* del dataset:
+      ábrelo y compara los runs entre sí.
 
 ### En Langfuse
 
-1. **Crea el juez.** En **Evaluators → LLM-as-a-judge**, crea un evaluador que se llame
-   exactamente `fidelidad`: ¿la respuesta solo afirma lo que devolvieron las
-   herramientas? Puntuación de 0 a 1. Usa la conexión al modelo que configuraste en el
-   capítulo 1. Aplícalo a trazas de Nexus, incluidas las que ya existen.
-2. **Anota tú.** Crea un score `fidelidad_humana` (**Settings → Scores**, de 0 a 1) y una
-   **Annotation queue** con 15 trazas **que el juez ya haya puntuado**. Puntúa cada una
-   sin mirar la nota del juez.
-3. **Compara:**
+1. Compara el resultado de los tres experimentos de "agente".
+2. **Lee las trazas del capítulo.** En **Tracing**, filtra por la etiqueta `cap3` (entorno
 
+   `cap3`). Son 10 conversaciones de Nexus escritas a propósito para calibrar jueces: todas
+     dicen la verdad, pero cambian el tono y si responden a lo que se preguntó. Las cargó
+     `uv run seed` en la instalación; si no las ves, súbelas con `uv run trazas-cap3`.
+3. **Define tus notas antes de ver nada más.** Escribe en el cuaderno qué es para ti un
+
+   tono brusco, uno seco y uno cercano: cómo debería hablar Nexus a un viajero. Después,
+     en **Settings → Scores → Add new score config**, crea dos scores de tipo
+     **CATEGORICAL**, con las categorías en este orden (Langfuse les pone los valores 0, 1
+     y 2 solo):
+      | Name | Value 0 | Value 1 | Value 2 |
+      | --- | --- | --- | --- |
+      | `tono_humano` | `brusco` | `seco` | `cercano` |
+      | `relevancia_humana` | `irrelevante` | `poco relevante` | `relevante` |
+
+      El orden importa: la primera categoría cuenta como 0; la del medio, como 0,5; la
+      última, como 1.
+4. **Anota tú.** Crea una **Annotation queue** con las 10 trazas `cap3` y los dos scores.
+
+   Puntúa cada traza en los dos criterios. Todavía no hay jueces: así nada te influye.
+5. **Crea los dos jueces.** En **Evaluators → LLM-as-a-judge**, con la conexión al modelo
+
+   del capítulo 1. Aplica los dos solo a las trazas con la etiqueta `cap3`, incluidas las
+     que ya existen: al guardar la regla, marca *Also run on past observations*.
+   - **Tu criterio:** parte de la plantilla *Judge on One Quality Criterion* (o de un
+    evaluador en blanco). Llámalo exactamente `tono`, escribe la rúbrica con tus
+    definiciones del paso 3 y haz que devuelva una categoría con **las mismas
+    etiquetas** que tu score: `brusco`, `seco` o `cercano`.
+   - **La plantilla de Langfuse:** elige *Check Answer Relevance* y **no cambies su**  
+    **prompt**. Cambiale el nombre `answer_relevance`;
+6. **Compara:**
    ```bash
-   uv run judge-agreement
+      uv run judge-agreement
    ```
 
-   Verás la concordancia, la kappa, la matriz de acuerdos y los enlaces a las trazas en
-   las que no coincidís. Léelas, ajusta la rúbrica del juez y vuelve a medir hasta llegar
-   a una kappa de 0,6.
+      Verás, para cada juez, la concordancia, la kappa ponderada, la matriz de 3×3 y los
+      enlaces a las trazas en las que no coincidís. Ajusta la rúbrica de `tono` y vuelve a
+      medir hasta llegar a 0,6. Si es la plantilla la que no llega, ¿qué puedes cambiar sin
+      tocar su prompt?
 
 Comprueba:
 
@@ -125,52 +150,17 @@ uv run check 3
 ## Sabrás que lo has hecho si…
 
 - `uv run check 3` sale en verde.
-- Tu juez tiene una kappa de 0,6 o más con al menos 10 trazas anotadas (la misión pide
-  15).
-- Sabes cuánto varía tu experimento entre repeticiones y cuál es la mejora mínima que
-  podrías detectar.
-
-<details>
-<summary>Pista 1 · Mi evaluador da error en el check</summary>
-
-Lee la línea del check: dice qué caso falla, qué esperaba y qué ha dado. Fíjate en el
-nombre del score (tiene que coincidir con el de la función) y en devolver `[]` cuando no
-hay nada que comprobar.
-
-</details>
-
-<details>
-<summary>Pista 2 · El juez no tiene con qué comparar</summary>
-
-¿Qué tendría que tener delante una persona para decidir si una respuesta es fiel? Mira
-qué variables le pasas al juez en la rúbrica y de qué parte de la traza salen. ¿Le estás
-dando todo eso?
-
-</details>
-
-<details>
-<summary>Pista 3 · La kappa no sube</summary>
-
-Mira los desacuerdos uno a uno. ¿El juez es más estricto o más permisivo que tú? Agrupa
-las frases en las que no coincidís: ese tipo de frase es lo que le falta aclarar a la
-rúbrica.
-
-</details>
-
-<details>
-<summary>Pista 4 · El check dice que no hay trazas con los dos scores</summary>
-
-Solo cuentan las trazas que tienen a la vez `fidelidad` (del juez) y `fidelidad_humana`
-(tuya). Comprueba que los nombres son exactamente esos y que anotaste trazas que el juez
-ya había evaluado.
-
-</details>
+- Tus dos jueces, `tono` y `answer_relevance`, tienen una kappa ponderada de 0,6 o más
+con las 10 trazas del capítulo.
+- Sabes cuánto varía tu experimento entre repeticiones y cuál es la mejora mínima que  
+podrías detectar.
 
 ## Para pensar
 
-- Anota las mismas 15 trazas que tu pareja, por separado, y comparad. ¿Coincidís
-  siempre las personas?
+- Anota las mismas 10 trazas que tu pareja, por separado, y comparad. ¿Coincidís más en
+la relevancia o en el tono? ¿Por qué?
+- ¿Qué te ha costado más ajustar: tu criterio o la plantilla? ¿Cuándo usarías cada uno?
 - Con la dispersión que has medido, ¿cuántos puntos tendría que mejorar una variante
-  para que te lo creyeras?
+para que te lo creyeras?
 
 Siguiente: [04 · La normativa que nadie leía](04-la-normativa-que-nadie-leia.md).

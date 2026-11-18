@@ -123,9 +123,56 @@ Lo demuestra que recibió ___ y devolvió ___.
 
 ## 03 · ¿Qué significa que Nexus va bien?
 
+### Cómo funcionan los evaluadores
+
+Explica con tus palabras cómo se evalúa en Langfuse y cómo lo hace Nexus. Mira
+[`evaluation/experiment.py`](evaluation/experiment.py) y
+[`evaluation/evaluators.py`](evaluation/evaluators.py).
+
+**Los tres tipos de evaluador**
+
+| | Evaluador de código | LLM-as-a-judge | Anotación humana |
+| --- | --- | --- | --- |
+| Dónde se define | | | |
+| Quién lo ejecuta | | | |
+| Cuándo se ejecuta | | | |
+| Un ejemplo en Nexus | | | |
+| Para qué es mejor | | | |
+
+**El método que usa Nexus para lanzar un experimento**
+
+`evaluation/experiment.py` llama a `langfuse.___(...)` con:
+
+| Argumento | Qué es en Nexus |
+| --- | --- |
+| `data` | |
+| `task` | |
+| `evaluators` | |
+| `run_evaluators` | |
+
+- Un evaluador recibe: [ ] `input` [ ] `output` [ ] `expected_output` [ ] `metadata`
+- Devuelve ___ y, cuando el caso no tiene nada que puntuar, ___
+- Un evaluador puntúa ___; un *run evaluator* como `averages` puntúa ___
+- En Langfuse, el resultado de cada evaluador aparece como ___, en ___
+
+**Qué evaluadores usa cada dataset** (el diccionario `EVALUATORS`)
+
+| Dataset | Evaluadores |
+| --- | --- |
+| `orquestador` | |
+| `agente` | |
+| `rag` | |
+
+**El juez de Langfuse**
+
+- Se ejecuta [ ] en mi portátil, con el código de Nexus [ ] en Langfuse
+- Puntúa [ ] trazas nuevas [ ] trazas que ya existían [ ] runs de experimentos
+- Las variables de su rúbrica y de qué parte de la traza sale cada una: ___
+
+**Dónde más se usan estos scores en el proyecto:** ___
+
 ### Evaluadores y experimentos
 
-- [ ] `veredicto_correcto`
 - [ ] `usa_tools_esperadas`
 
 | Experimento | Score | Media | Dispersión entre repeticiones |
@@ -136,16 +183,41 @@ Lo demuestra que recibió ___ y devolvió ___.
 
 Una variante tendría que mejorar al menos ___ puntos para que me lo creyera.
 
-### El juez
+### Los jueces
 
-| Ronda | Qué he cambiado en la rúbrica | Trazas anotadas | Concordancia | Kappa |
+**Mi criterio de tono** (escríbelo antes de anotar)
+
+| Categoría | Cuenta como | Cómo habla Nexus |
+| --- | --- | --- |
+| `cercano` | 1 | |
+| `seco` | 0,5 | |
+| `brusco` | 0 | |
+
+**Mis notas de las 10 trazas** (antes de ver a los jueces)
+
+| Traza | Tono | Relevancia | Traza | Tono | Relevancia |
+| --- | --- | --- | --- | --- | --- |
+| cap3-01 | | | cap3-06 | | |
+| cap3-02 | | | cap3-07 | | |
+| cap3-03 | | | cap3-08 | | |
+| cap3-04 | | | cap3-09 | | |
+| cap3-05 | | | cap3-10 | | |
+
+**Rondas**
+
+| Ronda | Juez | Qué he cambiado | Concordancia exacta | Kappa ponderada |
 | --- | --- | --- | --- | --- |
-| 1 | (rúbrica inicial) | | | |
+| 1 | `tono` | (rúbrica inicial) | | |
+| 1 | `answer_relevance` | (plantilla sin tocar) | | |
 | 2 | | | | |
 | 3 | | | | |
 
-En los desacuerdos, el juez es más [ ] estricto [ ] permisivo que yo, sobre todo con
-frases que ___
+En los desacuerdos de tono, el juez es más [ ] estricto [ ] permisivo que yo, sobre todo
+con respuestas que ___
+
+Con la plantilla de relevancia, lo que he tenido que ajustar es ___
+
+La traza en la que un criterio arrastró al otro (al juez o a mí): ___
 
 - [ ] `uv run check 3` sale en verde.
 
