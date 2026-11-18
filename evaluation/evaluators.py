@@ -56,15 +56,15 @@ def sin_errores(*, output: dict[str, Any], **_: Any) -> Evaluation:
 def veredicto_correcto(
     *, output: dict[str, Any], expected_output: dict[str, Any], **_: Any
 ) -> Evaluation | list[Evaluation]:
-    """1 si el veredicto del orquestador acierta y 0 si no.
-
-    - El veredicto de Nexus está en ``output["verdict"]`` y el esperado, en
-      ``expected_output["verdict"]``.
-    - Si el caso no tiene veredicto esperado, no hay nada que puntuar: devuelve ``[]``.
-    - Devuelve ``Evaluation(name="veredicto_correcto", value=...)``.
-    """
-
-    raise NotImplementedError("Completa veredicto_correcto: es la misión del capítulo 3.")
+    expected = expected_output.get("verdict")
+    if expected is None:
+        return []
+    actual = output.get("verdict")
+    return Evaluation(
+        name="veredicto_correcto",
+        value=1 if actual == expected else 0,
+        comment=f"esperado {expected}, obtenido {actual}",
+    )
 
 
 # --- 2. Trayectoria: herramientas y aprobaciones -------------------------------
@@ -80,7 +80,26 @@ def usa_tools_esperadas(
     - Las que usó, en ``output["tools"]``: una lista de llamadas, cada una con su ``name``.
     - Una de dos es 0,5. Usar herramientas de más no resta.
     - Sin herramientas esperadas, devuelve ``[]``.
+    - Si la tarea terminó con un error, ``output`` solo trae ``"error"`` y no tiene
+      ``"tools"``: cuenta como si no hubiera usado ninguna.
     - Devuelve ``Evaluation(name="usa_tools_esperadas", value=...)``.
+
+    Ejemplo: se esperaban dos y usó una, así que vale 0,5.
+
+        output = {
+            "respuesta": "...",
+            "tools": [
+                {"name": "buscar_normativa", "args": {"pregunta": "¿Puedo subir con la bici?"}},
+                {"name": "consultar_incidencias", "args": {"dia": "hoy"}},
+            ],
+        }
+        expected_output = {"tools": ["consultar_tarifas|buscar_normativa", "consultar_horario"]}
+        # devuelve Evaluation(name="usa_tools_esperadas", value=0.5)
+
+    ``"consultar_tarifas|buscar_normativa"`` cuenta porque usó ``buscar_normativa``;
+    ``consultar_horario`` no, porque no la llamó; y ``consultar_incidencias`` sobra, pero
+    no resta. Fíjate en que ``output["tools"]`` no es una lista de nombres, sino de
+    llamadas: el nombre está en ``["name"]`` de cada una.
     """
 
     raise NotImplementedError("Completa usa_tools_esperadas: es la misión del capítulo 3.")
@@ -179,6 +198,13 @@ def recupera_documento(
       ``doc_id#chunk``.
     - Sin documentos esperados, devuelve ``[]``.
     - Devuelve ``Evaluation(name="recupera_documento", value=...)``.
+
+    Ejemplo: el segundo fragmento viene de ``doc-b``, que es uno de los esperados, así que
+    vale 1.
+
+        output = {"respuesta": "...", "fragmentos": ["doc-a#250-0", "doc-b#250-3"]}
+        expected_output = {"docs": ["doc-b", "doc-c"]}
+        # devuelve Evaluation(name="recupera_documento", value=1)
     """
 
     raise NotImplementedError("Completa recupera_documento: es la misión del capítulo 4.")
@@ -209,6 +235,12 @@ def recupera_derogada(*, output: dict[str, Any], **_: Any) -> Evaluation | list[
     - Cada documento dice si está vigente en su campo ``vigente`` (``load_documents()``).
     - Sin fragmentos, devuelve ``[]``.
     - Devuelve ``Evaluation(name="recupera_derogada", value=...)``.
+
+    Ejemplo: si ``load_documents()`` dice que ``doc-a`` tiene ``vigente`` a ``False``,
+    vale 1 aunque el otro fragmento sea de un documento vigente.
+
+        output = {"respuesta": "...", "fragmentos": ["doc-a#250-0", "doc-b#250-3"]}
+        # devuelve Evaluation(name="recupera_derogada", value=1)
     """
 
     raise NotImplementedError("Completa recupera_derogada: es la misión del capítulo 4.")
@@ -225,6 +257,12 @@ def abstencion_correcta(
       ``output["respuesta"]``.
     - Si el caso no dice si hay respuesta, devuelve ``[]``.
     - Devuelve ``Evaluation(name="abstencion_correcta", value=...)``.
+
+    Ejemplo: la normativa no tiene la respuesta y Nexus dice que no consta, así que vale 1.
+
+        output = {"respuesta": "No consta en la normativa si se puede subir con patinete."}
+        expected_output = {"responde": False}
+        # devuelve Evaluation(name="abstencion_correcta", value=1)
     """
 
     raise NotImplementedError("Completa abstencion_correcta: es la misión del capítulo 4.")
