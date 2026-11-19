@@ -30,6 +30,23 @@ lo que necesitas saber, la misión paso a paso y cómo comprobar que la has term
 | [05 · El viernes de los despliegues](guias/05-despliegues-de-ultima-hora.md) | ¿Lo subo a producción? | `uv run check 5` |
 | [06 · Proyecto final](guias/06-proyecto-final.md) | ¿Sabes hacerlo tú solo? | Dataset oculto |
 
+> [!WARNING]
+> **Los jueces de Langfuse tardan en puntuar.** Los evaluadores *LLM-as-a-judge* (capítulos
+> 3 a 5) llaman al modelo con tu conexión de Groq, y la cuenta gratuita limita las
+> peticiones por minuto. Si lanzas un juez sobre varias trazas, solo unas pocas reciben el
+> score al momento: Langfuse reintenta las demás y van llegando en los minutos siguientes.
+> Si se agotan los reintentos, esa ejecución falla y la traza se queda sin score.
+>
+> - Lanza el juez **una vez** y espera unos 10 minutos. No lo relances mientras tanto: las
+>   dos tandas compiten por el mismo límite y cada traza acaba con scores repetidos.
+> - Cada regla hace una llamada por evaluador y por traza: una regla con dos jueces sobre 8
+>   trazas son 16 llamadas. Filtra bien (por fecha, por ejemplo) antes de marcar *Also run
+>   on past observations*.
+> - En **Evaluators**, el registro de ejecuciones de cada evaluador dice cuáles siguen
+>   pendientes y cuáles han fallado, con el error. Relanza solo las que fallaron.
+> - Cuando termines, desactiva la regla: si sigue activa, también puntuará las trazas
+>   nuevas que cumplan el filtro.
+
 ## Qué hay en el repositorio
 
 | Carpeta | Qué contiene |
