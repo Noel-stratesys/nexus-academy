@@ -46,7 +46,11 @@ class DatasetDefinition:
 
 
 def upload(definition: DatasetDefinition, langfuse: Any) -> int:
-    """Crea el dataset (o lo actualiza) con todos sus casos."""
+    """Crea el dataset (o lo actualiza) con todos sus casos.
+
+    Los casos que están en Langfuse pero ya no en el código se archivan: así el dataset
+    de Langfuse tiene los mismos casos activos que el código.
+    """
 
     langfuse.create_dataset(
         name=definition.name,
@@ -61,5 +65,26 @@ def upload(definition: DatasetDefinition, langfuse: Any) -> int:
             expected_output=case.expected,
             metadata=case.metadata(),
         )
+    _archive_removed(definition, langfuse)
     langfuse.flush()
     return len(definition.cases)
+
+
+def _archive_removed(definition: DatasetDefinition, langfuse: Any) -> None:
+    current = {definition.item_id(case) for case in definition.cases}
+    page = 1
+    while True:
+        result = langfuse.api.dataset_items.list(dataset_name=definition.name, page=page, limit=50)
+        for item in result.data:
+            if item.id not in current and str(item.status).upper().endswith("ACTIVE"):
+                langfuse.create_dataset_item(
+                    dataset_name=definition.name,
+                    id=item.id,
+                    input=item.input,
+                    expected_output=item.expected_output,
+                    metadata=item.metadata,
+                    status="ARCHIVED",
+                )
+        if page >= (result.meta.total_pages or 1):
+            return
+        page += 1

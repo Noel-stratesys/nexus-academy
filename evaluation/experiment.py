@@ -202,7 +202,13 @@ def run(args: argparse.Namespace) -> list[dict[str, float]]:
         flags=flags,
     )
     dataset = langfuse.get_dataset(definition.name)
-    items = list(dataset.items)
+    # Solo los casos activos que siguen en el código (los demás están archivados).
+    current = {definition.item_id(case) for case in definition.cases}
+    items = [
+        item
+        for item in dataset.items
+        if item.id in current and str(item.status).upper().endswith("ACTIVE")
+    ]
     if not items:
         sys.exit(f"El dataset {definition.name} no tiene casos. Súbelo con: uv run dataset")
     if args.limite:
