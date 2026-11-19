@@ -235,26 +235,38 @@ La traza en la que un criterio arrastró al otro (al juez o a mí): ___
 Su casilla en la matriz:
 [ ] todo bien [ ] fallo de generación [ ] acierto por suerte [ ] fallo de recuperación
 
-### Diagnóstico de 12 trazas de normativa
+### Los jueces de Langfuse en la traza de Marta
 
-| | Respuesta correcta | Respuesta incorrecta |
+| Juez | Score | ¿Avisa del problema? |
 | --- | --- | --- |
-| **Recuperación correcta** | ___ (todo bien) | ___ (fallo de generación) |
-| **Recuperación incorrecta** | ___ (acierto por suerte) | ___ (fallo de recuperación) |
+| `groundedness` | | [ ] sí [ ] no |
+| `context_precision` | | [ ] sí [ ] no |
 
-### Barrido de configuraciones
+- Qué le pregunta cada plantilla al modelo: ___
+- Dato del *Contexto* que delata el fallo y que ninguna plantilla usa: ___
+- Qué necesita saber un evaluador para detectarlo · ¿Hace falta un LLM?: ___
 
-- [ ] `recupera_documento` · [ ] `recupera_derogada` · [ ] `abstencion_correcta`
+### Mi evaluador
 
-| Variante | `recupera_documento` | `recupera_derogada` | `abstencion_correcta` | Tokens por respuesta |
-| --- | --- | --- | --- | --- |
-| `top_k` 2 | | | | |
-| `top_k` 4 | | | | |
-| `top_k` 8 | | | | |
-| `chunk_size` 100 | | | | |
-| `chunk_size` 800 | | | | |
-| solo vigentes | | | | |
-| **La mía:** ___ | | | | |
+- Qué mira: ___
+- De dónde saca cada dato: ___
+- Vale 1 cuando: ___
+- ¿Necesita un LLM? [ ] sí [ ] no · ¿Por qué?: ___
+- [ ] `fallo_marta` completado
+
+### Corrección del bug
+
+| Variante | `fallo_marta` | `menciona_datos` | Tokens por respuesta |
+| --- | --- | --- | --- |
+| partida | | | |
+| `top_k` 2 | | | |
+| `top_k` 4 | | | |
+| `top_k` 8 | | | |
+| `chunk_size` 100 | | | |
+| `chunk_size` 800 | | | |
+| embeddings | | | |
+| solo vigentes | | | |
+| **La mía:** ___ | | | |
 
 ### Decisión
 

@@ -66,15 +66,6 @@ def test_menciona_datos_ignores_accents_and_case() -> None:
     assert _value(result) == 1
 
 
-def test_precision_recuperacion() -> None:
-    output: dict[str, Any] = {
-        "fragmentos": ["normativa-viajeros-2024#250-0", "guia-bicicletas-y-patinetes#250-0"],
-    }
-    expected = {"docs": ["normativa-viajeros-2026", "guia-bicicletas-y-patinetes"]}
-
-    assert _value(ev.precision_recuperacion(output=output, expected_output=expected)) == 0.5
-
-
 def test_averages_by_score_name() -> None:
     class Result:
         def __init__(self, *values: float) -> None:

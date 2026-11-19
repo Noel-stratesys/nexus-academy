@@ -10,7 +10,7 @@ Las capas, de lo más objetivo a lo más subjetivo:
 1. Nodo: ¿el orquestador dio el veredicto correcto?
 2. Trayectoria: ¿usó las herramientas correctas, evitó las prohibidas, pidió aprobación?
 3. Respuesta: ¿contiene los datos que tiene que dar?
-4. RAG: ¿recuperó el documento correcto? ¿se abstuvo cuando no había respuesta?
+4. RAG: ¿el buscador trae lo que debe?
 
 La fidelidad de la respuesta a los datos no se puede comprobar bien con código: de eso
 se encarga el juez (LLM-as-a-judge) configurado en Langfuse.
@@ -154,30 +154,7 @@ def menciona_datos(
     )
 
 
-# --- 4. RAG: recuperación y abstención ----------------------------------------
-
-ABSTENTION_PHRASES = [
-    "no consta",
-    "no dispongo",
-    "no tengo informacion",
-    "no tengo datos",
-    "no encuentro",
-    "no he encontrado",
-    "no aparece",
-    "no hay informacion",
-    "no se menciona",
-    "no figura",
-    "no se indica",
-    "no especifica",
-    "no recoge",
-    "no puedo confirmar",
-    "no se especifica",
-    "no tinc informacio",
-    "no consta",
-    "i don't have",
-    "i couldn't find",
-    "no information",
-]
+# --- 4. RAG --------------------------------------------------------------------
 
 
 def _retrieved_docs(output: dict[str, Any]) -> list[str]:
@@ -188,84 +165,50 @@ def _current_docs() -> dict[str, bool]:
     return {document.doc_id: document.vigente for document in load_documents()}
 
 
-def recupera_documento(
-    *, output: dict[str, Any], expected_output: dict[str, Any], **_: Any
+def fallo_marta(
+    *, output: dict[str, Any], **_: Any
 ) -> Evaluation | list[Evaluation]:
-    """1 si algún fragmento recuperado viene de un documento esperado y 0 si no.
+    """Tu evaluador: 1 si el caso tiene el mismo fallo que el de Marta y 0 si no.
 
-    - Los documentos esperados están en ``expected_output["docs"]``.
-    - Los fragmentos recuperados, en ``output["fragmentos"]``. Sus ids tienen la forma
-      ``doc_id#chunk``.
-    - Sin documentos esperados, devuelve ``[]``.
-    - Devuelve ``Evaluation(name="recupera_documento", value=...)``.
+    Qué mirar para saberlo lo decides tú: es el diseño que has hecho en el cuaderno.
 
-    Ejemplo: el segundo fragmento viene de ``doc-b``, que es uno de los esperados, así que
-    vale 1.
+    - Recibe la salida de la tarea, ``output``, con la respuesta de Nexus
+      (``output["respuesta"]``) y los ids de los fragmentos que recuperó el buscador
+      (``output["fragmentos"]``, de la forma ``doc_id#chunk``).
+    - ``load_documents()`` devuelve los documentos de ``nexus/docs/``, cada uno con los
+      datos de su cabecera.
+    - Dos funciones de ayuda, justo encima:
 
-        output = {"respuesta": "...", "fragmentos": ["doc-a#250-0", "doc-b#250-3"]}
-        expected_output = {"docs": ["doc-b", "doc-c"]}
-        # devuelve Evaluation(name="recupera_documento", value=1)
+      - ``_retrieved_docs(output)``: los ``doc_id`` de ``output["fragmentos"]`` (lo que
+        va antes de ``#``), en el mismo orden y con repetidos.
+
+            output = {
+                "respuesta": "...",
+                "fragmentos": [
+                    "normativa-viajeros-2026#250-3",
+                    "guia-bicicletas-y-patinetes#250-0",
+                    "normativa-viajeros-2026#250-1",
+                ],
+            }
+            _retrieved_docs(output)
+            # ["normativa-viajeros-2026", "guia-bicicletas-y-patinetes", "normativa-viajeros-2026"]
+
+            _retrieved_docs({"respuesta": "..."})  # sin fragmentos
+            # []
+
+      - ``_current_docs()``: no recibe nada y devuelve un diccionario con el ``doc_id``
+        de cada documento de ``nexus/docs/`` y si está vigente.
+
+            docs = _current_docs()
+            # {"normativa-viajeros-2026": True, "objetos-perdidos": True, ...}
+            docs["normativa-viajeros-2026"]
+            # True
+
+    - Si el caso no tiene nada que puedas mirar, devuelve ``[]``.
+    - Devuelve ``Evaluation(name="fallo_marta", value=...)``.
     """
 
-    raise NotImplementedError("Completa recupera_documento: es la misión del capítulo 4.")
-
-
-def precision_recuperacion(
-    *, output: dict[str, Any], expected_output: dict[str, Any], **_: Any
-) -> Evaluation | list[Evaluation]:
-    """Qué parte de los fragmentos recuperados venía de un documento con la respuesta."""
-
-    expected = set(expected_output.get("docs") or [])
-    retrieved = _retrieved_docs(output)
-    if not expected or not retrieved:
-        return []
-    relevant = [doc for doc in retrieved if doc in expected]
-    return Evaluation(
-        name="precision_recuperacion",
-        value=len(relevant) / len(retrieved),
-        comment=f"{len(relevant)} de {len(retrieved)} fragmentos relevantes",
-    )
-
-
-def recupera_derogada(*, output: dict[str, Any], **_: Any) -> Evaluation | list[Evaluation]:
-    """1 si algún fragmento recuperado viene de un documento que ya no está vigente.
-
-    - Los fragmentos recuperados están en ``output["fragmentos"]``, con ids de la forma
-      ``doc_id#chunk``.
-    - Cada documento dice si está vigente en su campo ``vigente`` (``load_documents()``).
-    - Sin fragmentos, devuelve ``[]``.
-    - Devuelve ``Evaluation(name="recupera_derogada", value=...)``.
-
-    Ejemplo: si ``load_documents()`` dice que ``doc-a`` tiene ``vigente`` a ``False``,
-    vale 1 aunque el otro fragmento sea de un documento vigente.
-
-        output = {"respuesta": "...", "fragmentos": ["doc-a#250-0", "doc-b#250-3"]}
-        # devuelve Evaluation(name="recupera_derogada", value=1)
-    """
-
-    raise NotImplementedError("Completa recupera_derogada: es la misión del capítulo 4.")
-
-
-def abstencion_correcta(
-    *, output: dict[str, Any], expected_output: dict[str, Any], **_: Any
-) -> Evaluation | list[Evaluation]:
-    """1 si Nexus responde cuando hay respuesta y se abstiene cuando no la hay.
-
-    - ``expected_output["responde"]`` dice si la normativa tiene la respuesta.
-    - Abstenerse es decir que no consta («no consta…», «no tengo información…»): las
-      frases están en ``ABSTENTION_PHRASES``. La respuesta de Nexus está en
-      ``output["respuesta"]``.
-    - Si el caso no dice si hay respuesta, devuelve ``[]``.
-    - Devuelve ``Evaluation(name="abstencion_correcta", value=...)``.
-
-    Ejemplo: la normativa no tiene la respuesta y Nexus dice que no consta, así que vale 1.
-
-        output = {"respuesta": "No consta en la normativa si se puede subir con patinete."}
-        expected_output = {"responde": False}
-        # devuelve Evaluation(name="abstencion_correcta", value=1)
-    """
-
-    raise NotImplementedError("Completa abstencion_correcta: es la misión del capítulo 4.")
+    raise NotImplementedError("Completa fallo_marta: es la misión del capítulo 4.")
 
 
 # --- Qué evaluadores usa cada dataset -----------------------------------------
@@ -281,10 +224,7 @@ EVALUATORS: dict[str, list[EvaluatorFunction]] = {
     ],
     "rag": [
         sin_errores,
-        recupera_documento,
-        precision_recuperacion,
-        recupera_derogada,
-        abstencion_correcta,
+        fallo_marta,
         menciona_datos,
     ],
 }

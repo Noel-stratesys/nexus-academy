@@ -51,13 +51,25 @@ rompe en cuanto cambia el modelo.
 
 **Cómo se mide un RAG:**
 
-| Métrica | Pregunta | Evaluador |
+Langfuse trae tres jueces ya hechos para un RAG, en la sección *Retrieval* de
+**Evaluators**:
+
+| Métrica | Pregunta | Plantilla de Langfuse |
 | --- | --- | --- |
-| Recupera documento | ¿Entre lo que trae está el documento con la respuesta? | `recupera_documento` |
-| Precisión | ¿Qué parte de lo que trae es relevante? | `precision_recuperacion` |
-| Recupera derogada | ¿Trae normas que ya no están vigentes? | `recupera_derogada` |
-| Abstención | ¿Dice «no consta» cuando no hay respuesta? | `abstencion_correcta` |
-| Fidelidad | ¿Solo afirma lo que dicen los fragmentos? | Un juez en Langfuse, como la plantilla *Check Answer Groundedness* |
+| Fidelidad | ¿Solo afirma lo que dicen los fragmentos? | *Check Answer Groundedness* |
+| Contexto útil | ¿Los fragmentos sirven para responder? | *Check Context Precision* |
+| Contexto suficiente | ¿Los fragmentos cubren lo que hace falta para responder? | *Check Context Recall* |
+
+Son genéricos: sirven para cualquier RAG, pero no saben nada del tuyo. Lo que depende de
+tus datos (qué documento tenía la respuesta, qué espera cada caso del dataset) lo mide mejor un
+evaluador propio, casi siempre con código y sin llamar a ningún modelo. Algunos ejemplos
+de los que se pueden crear:
+
+| Métrica | Pregunta |
+| --- | --- |
+| Cita la fuente | ¿Dice en qué norma y edición se basa? |
+| Fragmentos repetidos | ¿Gasta huecos del `top_k` en trozos del mismo documento? |
+| Idioma | ¿Responde en el idioma en que le preguntaron? |
 
 El dataset `nexus/rag` tiene 15 preguntas con respuesta y 15 sin ella. Si no, un sistema
 que siempre contesta algo sacaría buena nota.
@@ -66,46 +78,119 @@ que siempre contesta algo sacaría buena nota.
 
 ### En Langfuse
 
-1. **Encuentra la traza de Marta** (usuario `1017`) y abre la observation `retriever`.
-   ¿De qué documento salió el fragmento en el que se basó la respuesta? Ábrelo en
-   `nexus/docs/`: ¿es el documento que debería haber respondido a Marta?
-2. **Diagnostica.** Crea un score categórico `diagnostico_rag` con las cuatro casillas
-   de la matriz (todo bien, fallo de generación, acierto por suerte, fallo de
-   recuperación) y clasifica con él 12 trazas de normativa.
+#### 1 · Encuentra la traza de Marta
+
+Soporte ha detectado que la viajera `1017` preguntó
+por la bici en hora punta y que la respuesta de Nexus le costó una multa. Algo raro
+pasó en esa conversación: localízala y revísala. Para dar con ella, en **Tracing**:
+
+| Qué           | Cómo                              |
+| ------------- | --------------------------------- |
+| Fecha         | martes 3 de noviembre de **2026** |
+| Viajera (id)  | `1017`                            |
+| Palabra clave | `bici`                            |
+
+Marta preguntó lo mismo otros días: si te salen varias trazas, la del ticket es la del
+**3 de noviembre**, el día de la multa.
+
+Abre la traza y, dentro de la tool `buscar_normativa`, la observation de tipo
+*retriever* (`NormativaRetriever`). ¿De qué documento salió el
+fragmento en el que se basó la respuesta? Ábrelo en `nexus/docs/`: ¿es el documento
+que debería haber respondido a Marta?
+
+#### 2 · Pon los jueces de RAG de Langfuse
+
+En **Evaluators → LLM-as-a-judge**, con la conexión al modelo del capítulo 1, crea tres
+evaluadores a partir de las plantillas de la sección *Retrieval*, **sin cambiar su
+prompt**:
+
+| Plantilla                   | Nombre del score    |
+| --------------------------- | ------------------- |
+| *Check Answer Groundedness* | `groundedness`      |
+| *Check Context Precision*   | `context_precision` |
+
+No hace falta pasarlos por todo el historial: cada juez llama al modelo una vez por
+traza. Aplícalos solo a las conversaciones de normativa del **día de Marta**:
+
+| Filtro                          | Valor                                                                         |
+| ------------------------------- | ----------------------------------------------------------------------------- |
+| Observation raíz                | `isRootObservation:true` (una por conversación)                               |
+| Etiqueta (*metadata.categoria*) | `normativa`: es un **tag** de la traza, no una palabra que buscar en el texto |
+| Fecha                           | martes 3 de noviembre de **2026**                                             |
+
+Son 8 conversaciones de ese día: la de Marta y otras preguntas de normativa. Como ya
+existen, al guardar la regla marca *Also run on past observations*. Al mapear las
+variables de cada plantilla:
+
+| Variable             | De dónde sale                 |
+| -------------------- | ----------------------------- |
+| Pregunta del viajero | Entrada (*input*) de la traza |
+| Contexto             | Output traza contexto         |
+| Respuesta de Nexus   | Output traza respuesta        |
+
+Cuando terminen, mira los tres scores de las 8 conversaciones, empezando por la de Marta.
 
 ### En el código
 
-1. Abre `evaluation/evaluators.py` y completa tres evaluadores:
-   - `recupera_documento`: 1 si alguno de los fragmentos recuperados viene de un
-     documento esperado (`expected_output["docs"]`), 0 si no. Ojo: los ids de fragmento
-     tienen la forma `doc_id#chunk`. Sin documentos esperados, devuelve `[]`.
-   - `recupera_derogada`: 1 si algún fragmento viene de un documento que ya no está
-     vigente. Cada documento lo dice en su campo `vigente` (`load_documents()`). Sin
-     fragmentos, devuelve `[]`.
-   - `abstencion_correcta`: 1 si Nexus responde cuando hay respuesta y se abstiene
-     («no consta…») cuando no la hay (`expected_output["responde"]`). Si el caso no lo
-     dice, devuelve `[]`.
-2. **Barre configuraciones.** Lanza un experimento por variante y compáralas en
-   Langfuse (pestaña del dataset `nexus/rag`):
+#### 3 · Averigua por qué los jueces no lo ven y diseña el evaluador que sí
 
-   ```bash
-   uv run experiment rag --rag-top-k 2
-   uv run experiment rag --rag-top-k 4
-   uv run experiment rag --rag-top-k 8
-   uv run experiment rag --rag-chunk-size 100
-   uv run experiment rag --rag-chunk-size 800
-   uv run experiment rag --rag-solo-vigentes
-   ```
+Mira los dos scores de la conversación que le costó una multa a Marta: ¿alguno avisa
+del problema que encontraste en el paso 1? ¿Y por el motivo correcto? Antes de escribir
+código, explica en el cuaderno por qué:
 
-   Puedes combinar opciones y ponerle nombre a cada variante con `--nombre`, para
-   reconocerla en Langfuse:
+- Lee el prompt de cada plantilla: ¿qué le preguntan exactamente al modelo?
+- Mira lo que les llega en *Contexto*: ¿hay algún dato que diga que la respuesta no vale?
+¿Alguna plantilla lo usa?
+- ¿Qué tendría que saber un evaluador para detectar el fallo de Marta? ¿Hace falta un
+LLM para eso?
 
-   ```bash
-   uv run experiment rag --rag-top-k 4 --rag-chunk-size 250 --nombre "k4-c250"
-   ```
+Con esas respuestas, diseña en el cuaderno tu evaluador: qué mira, de dónde saca cada
+dato y cuándo da por buena una respuesta. Estos son los campos que tienes:
 
-3. **Elige una configuración**, ponla en tu `.env` (`RAG__TOP_K`, `RAG__CHUNK_SIZE`,
-   `RAG__ONLY_CURRENT`, `RAG__STRATEGY`) y defiéndela con la tabla de comparación.
+| Dónde | Campo | Qué es |
+| --- | --- | --- |
+| Salida de la tarea (`output`) | `output["fragmentos"]` | Ids de los fragmentos recuperados, con la forma `doc_id#chunk` (`normativa-viajeros-2026#250-3`) |
+| Los documentos (`load_documents()`) | `doc_id` | Id del documento: lo que va antes de `#` en un fragmento |
+| | `titulo` | Título, con la edición |
+| | `vigente` | `True` o `False`: si la norma sigue en vigor |
+
+Después, impleméntalo en `evaluation/evaluators.py`, en la función `fallo_marta`: vale
+1 cuando un caso tiene el mismo fallo que el de Marta y 0 cuando no. El docstring dice
+qué datos recibe y qué tiene que devolver, y `menciona_datos`, más arriba, te sirve de
+modelo.
+
+#### 4 · Corrige el bug
+
+Ahora que tienes con qué medirlo, arregla el buscador para que a Marta no le vuelva a
+pasar. Lanza primero el experimento con la configuración actual para tener la foto de
+partida: tu evaluador te dirá cuántos casos tienen el mismo problema que Marta.
+
+```bash
+uv run experiment rag --nombre "partida"
+```
+
+Después prueba variantes y compáralas en Langfuse (pestaña del dataset `nexus/rag`):
+
+```bash
+uv run experiment rag --rag-top-k 2
+uv run experiment rag --rag-top-k 4
+uv run experiment rag --rag-top-k 8
+uv run experiment rag --rag-chunk-size 100
+uv run experiment rag --rag-chunk-size 800
+uv run experiment rag --rag-estrategia embeddings
+uv run experiment rag --rag-solo-vigentes
+```
+
+Puedes combinar opciones y ponerle nombre a cada variante con `--nombre`, para
+reconocerla en Langfuse:
+
+```bash
+uv run experiment rag --rag-top-k 8 --rag-chunk-size 100 --nombre "top8-trozos100"
+```
+
+Elige la configuración que deja `fallo_marta` a 0 en el caso de Marta **sin
+empeorar el resto de scores**, ponla en tu `.env` (`RAG__TOP_K`, `RAG__CHUNK_SIZE`,
+`RAG__ONLY_CURRENT`, `RAG__STRATEGY`) y defiéndela con la tabla de comparación.
 
 Comprueba:
 
@@ -113,44 +198,11 @@ Comprueba:
 uv run check 4
 ```
 
-Apunta los resultados del barrido en la tabla del cuaderno; la usaremos al cerrar el
+Apunta los resultados del barrido en la tabla del cuaderno; la usaremos al cerrar el  
 capítulo.
-
-## Sabrás que lo has hecho si…
-
-- `uv run check 4` sale en verde.
-- El caso de Marta pasa **y el resto no empeora**.
-- Puedes explicar si el fallo de Marta era de recuperación, de generación o de datos.
-
-<details>
-<summary>Pista 1 · El modelo dijo que sí, ¿se lo inventó?</summary>
-
-Usa la matriz: lo primero es decidir si la respuesta es fiel a los fragmentos que le
-llegaron al modelo. Según lo que salga, sabrás en qué fila y en qué columna estás, y
-hacia dónde mirar después.
-
-</details>
-
-<details>
-<summary>Pista 2 · ¿Por qué no aparece la normativa vigente?</summary>
-
-Prueba la pregunta de Marta con `uv run index --buscar "…"`. Después busca a mano en
-`nexus/docs/` el documento que debería haber salido y compáralo con el que sale. ¿Qué
-tiene el que sale que no tenga el otro? Repasa la tabla de ajustes.
-
-</details>
-
-<details>
-<summary>Pista 3 · Subo top_k y el caso de Marta pasa, ¿ya está?</summary>
-
-Mira qué más ha cambiado: ¿cuántos fragmentos derogados entran ahora? ¿Y los tokens por
-respuesta? Una configuración que arregla un caso y empeora el resto no es una solución.
-
-</details>
 
 ## Para pensar
 
 - ¿De quién era el fallo: del modelo, del prompt o de los datos?
-- ¿Qué pasaría con tu configuración si mañana se publica una normativa de 2027?
 
 Siguiente: [05 · El viernes de los despliegues](05-despliegues-de-ultima-hora.md).
