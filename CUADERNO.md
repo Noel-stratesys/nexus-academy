@@ -1,8 +1,8 @@
 # Cuaderno de trabajo
 
 Aquí apuntas lo que vas encontrando en cada capítulo: los datos, las decisiones y por qué
-las tomaste. Te servirá para defender tus conclusiones en la puesta en común y, en el
-proyecto final, para recordar qué probaste.
+las tomaste. Te servirá para defender tus conclusiones en la puesta en común y para
+recordar qué probaste.
 
 Está preparado para que escribas poco:
 
@@ -302,32 +302,3 @@ Lo que he corregido:
 
 - [ ] Green no tiene tráfico al terminar.
 - [ ] `uv run check 5` sale en verde.
-
----
-
-## 06 · Proyecto final
-
-### Decisiones
-
-| Minuto | Qué he decidido | Por qué |
-| --- | --- | --- |
-| | | |
-| | | |
-| | | |
-| | | |
-
-### Experimentos
-
-| Nombre del run | Qué cambia respecto al anterior | Calidad | Tokens por conversación | Latencia p50 | ¿Me lo quedo? |
-| --- | --- | --- | --- | --- | --- |
-| | (punto de partida) | | | | |
-| | | | | | |
-| | | | | | |
-
-### Lo que entrego
-
-- Herramientas: [ ] `consultar_bus_nocturno` [ ] `estado_ascensores`
-  [ ] `reservar_asistencia` (pide aprobación) · Auxiliares: ___
-- [ ] Reglamento y protocolo indexados.
-- [ ] Prompts en Langfuse con el label `production`: orquestador v___ · executor v___
-- Lo que haría con más tiempo: ___

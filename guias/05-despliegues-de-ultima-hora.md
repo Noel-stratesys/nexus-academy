@@ -158,4 +158,5 @@ estado está cada uno.
 - ¿Qué caso habrías añadido al dataset para que la puerta hubiera parado cada cambio que
   falló en el canary?
 
-Siguiente: [06 · Proyecto final](06-proyecto-final.md).
+¿Te sobra tiempo? Coge un proyecto que hayas hecho en otra clase e instrumentalo con
+Langfuse: trazas primero, y después prompts, un dataset pequeño y un experimento.

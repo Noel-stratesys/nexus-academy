@@ -3,8 +3,8 @@
     START → orchestrator ─(válida)→ executor → END
                          └(rechazada: ya respondió)→ END
 
-``build_graph()`` es el contrato del proyecto: los experimentos, el simulador y la
-evaluación del proyecto final construyen el agente siempre a través de esta función.
+``build_graph()`` es el contrato del proyecto: los experimentos y el simulador
+construyen el agente siempre a través de esta función.
 """
 
 from typing import Any

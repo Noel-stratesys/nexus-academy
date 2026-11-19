@@ -28,7 +28,6 @@ lo que necesitas saber, la misión paso a paso y cómo comprobar que la has term
 | [03 · ¿Qué significa que Nexus va bien?](guias/03-que-significa-que-nexus-va-bien.md) | ¿Funciona bien? | `uv run check 3` |
 | [04 · La normativa que nadie leía](guias/04-la-normativa-que-nadie-leia.md) | ¿Recupera lo que debe? | `uv run check 4` |
 | [05 · El viernes de los despliegues](guias/05-despliegues-de-ultima-hora.md) | ¿Lo subo a producción? | `uv run check 5` |
-| [06 · Proyecto final](guias/06-proyecto-final.md) | ¿Sabes hacerlo tú solo? | Dataset oculto |
 
 > [!WARNING]
 > **Los jueces de Langfuse tardan en puntuar.** Los evaluadores *LLM-as-a-judge* (capítulos
