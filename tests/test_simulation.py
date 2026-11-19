@@ -19,6 +19,7 @@ from nexus.graph import build_graph
 from nexus.llm import langfuse_client
 from nexus.llm.prompts import prompt_version_scope
 from nexus.prompts.versions import EXECUTOR_JORDI, EXECUTOR_MARC
+from nexus.runner import root_output
 from nexus.seed import prompt_del_historial
 from nexus.settings import Models, RagSettings
 from nexus.simulation.feedback import contiene, feedback_for, probabilidad_de_pulgar_arriba
@@ -223,6 +224,33 @@ async def test_marc_answers_the_same_question_soberly(nexus_con_guion: Any) -> N
 
     assert answer.startswith("El jueves la L3 funciona con normalidad")
     assert "Pere" not in answer
+
+
+async def test_root_output_carries_the_context_marta_got(nexus_con_guion: Any) -> None:
+    """La raíz de la traza lleva la respuesta y los fragmentos que leyó el modelo.
+
+    Es lo que mapean los jueces de RAG de la guía 4: sin el contexto en la raíz, el juez
+    de fidelidad no tiene contra qué comparar la respuesta.
+    """
+
+    marta = story_scenarios()["marta"]
+
+    answer, llamadas = await _conversar(nexus_con_guion, marta, "blue")
+    output = root_output(answer, llamadas)
+
+    assert output["respuesta"] == answer
+    assert output["contexto"], "La conversación de Marta debería llevar fragmentos."
+    assert {"id", "documento", "texto"} <= set(output["contexto"][0])
+    assert any(f["id"].startswith("normativa-viajeros-2024#") for f in output["contexto"])
+
+
+def test_root_output_without_buscar_normativa_has_empty_context() -> None:
+    llamadas = [{"name": "consultar_horario", "args": {}, "result": "{}"}]
+
+    assert root_output("Sale a las 8:10.", llamadas) == {
+        "respuesta": "Sale a las 8:10.",
+        "contexto": [],
+    }
 
 
 # --- Las trazas en su fecha ------------------------------------------------------------------

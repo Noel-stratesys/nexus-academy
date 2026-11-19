@@ -10,7 +10,6 @@ al empezar) y el mismo modelo, para que los resultados se puedan comparar.
 """
 
 import asyncio
-import json
 import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
@@ -26,7 +25,7 @@ from nexus.graph import build_graph
 from nexus.llm.langfuse_client import trace_run, with_langfuse
 from nexus.llm.prompts import prompt_version_scope
 from nexus.nodes.orchestrator import UNAVAILABLE_RESPONSE, classify_request
-from nexus.runner import run_turn
+from nexus.runner import retrieved_context, run_turn
 from nexus.settings import Models, RagSettings, settings
 
 logger = logging.getLogger(__name__)
@@ -86,16 +85,7 @@ async def _with_retries(run: Callable[[], Awaitable[dict[str, Any]]]) -> dict[st
 def _fragments(tool_calls: list[dict[str, Any]]) -> list[str]:
     """Ids de los fragmentos de normativa que devolvió ``buscar_normativa``."""
 
-    ids: list[str] = []
-    for call in tool_calls:
-        if call["name"] != "buscar_normativa" or not call.get("result"):
-            continue
-        try:
-            payload = json.loads(call["result"])
-        except (TypeError, json.JSONDecodeError):
-            continue
-        ids.extend(fragment["id"] for fragment in payload.get("fragmentos", []))
-    return ids
+    return [fragment["id"] for fragment in retrieved_context(tool_calls)]
 
 
 def make_task(target: str, run: RunSettings) -> Task:
