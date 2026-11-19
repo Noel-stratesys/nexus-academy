@@ -519,6 +519,7 @@ def main(argv: list[str] | None = None) -> None:
             sys.exit("✘ Langfuse no acepta las claves del .env (LANGFUSE_PUBLIC_KEY/SECRET_KEY).")
 
         from evaluation.datasets import DATASETS, upload
+        from evaluation.experimentos_grabados import cargar as cargar_experimentos
         from evaluation.trazas_cap3 import cargar as cargar_trazas_cap3
         from nexus.dashboard import ensure_dashboard
 
@@ -531,6 +532,8 @@ def main(argv: list[str] | None = None) -> None:
         ensure_dashboard(langfuse, report=_escribir)
         _escribir("\nTrazas del capítulo 3 (para calibrar los jueces):")
         cargar_trazas_cap3(langfuse, buffer=buffer, report=_escribir)
+        _escribir("\nExperimentos del capítulo 4 (dataset nexus/rag):")
+        cargar_experimentos(langfuse, report=_escribir)
         _escribir("\nHistorial (26 de octubre – 15 de noviembre de 2026):")
     else:
         versiones = _prompts_locales()

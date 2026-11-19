@@ -71,8 +71,8 @@ de los que se pueden crear:
 | Fragmentos repetidos | ¿Gasta huecos del `top_k` en trozos del mismo documento? |
 | Idioma | ¿Responde en el idioma en que le preguntaron? |
 
-El dataset `nexus/rag` tiene 15 preguntas con respuesta y 15 sin ella. Si no, un sistema
-que siempre contesta algo sacaría buena nota.
+El dataset `nexus/rag` tiene 10 preguntas de normativa, todas con respuesta en los
+documentos. Varias dependen de la edición de la norma: bicis, patinetes, perros y multas.
 
 ## La misión
 
@@ -159,47 +159,55 @@ Después, impleméntalo en `evaluation/evaluators.py`, en la función `fallo_mar
 qué datos recibe y qué tiene que devolver, y `menciona_datos`, más arriba, te sirve de
 modelo.
 
-#### 4 · Corrige el bug
+#### 4 · Lee la evolución de los experimentos
 
-Ahora que tienes con qué medirlo, arregla el buscador para que a Marta no le vuelva a
-pasar. Lanza primero el experimento con la configuración actual para tener la foto de
-partida: tu evaluador te dirá cuántos casos tienen el mismo problema que Marta.
+Antes de tocar el buscador, mira lo que ya se ha probado. Entre el 7 y el 11 de
+noviembre, el equipo lanzó un experimento al día sobre el dataset `nexus/rag`, cada uno
+con un cambio en el buscador. Están en Langfuse, en la pestaña del dataset:
+
+| Ejecución | Qué cambia respecto a la partida |
+| --- | --- |
+| `01-partida` | Nada: BM25, trozos de 250, `top_k` 4 y toda la normativa |
+| `02-top_k-8` | Trae 8 fragmentos |
+| `03-trozos-100` | Trozos de 100 tokens |
+| `04-embeddings` | Busca por significado (embeddings) en vez de por palabras (BM25) |
+| `05-solo-vigentes` | Solo busca en la normativa vigente |
+
+Ábrelas en la vista de comparación y síguelas en orden, de la 01 a la 05:
+
+- `menciona_datos`, la latencia y los tokens: ¿qué sube y qué baja de una ejecución a
+otra? ¿Hay alguna en la que la respuesta mejore sin que cueste más?
+- El caso de Marta (`rag-01`): abre su traza en cada ejecución y mira qué fragmentos
+trajo el buscador. ¿En cuáles sigue llegando la normativa derogada?
+- Un caso que cambie entre dos ejecuciones: abre sus dos trazas y compara qué fragmentos
+trajo el buscador en cada una.
+
+Estas ejecuciones no tienen `fallo_marta`: tu evaluador lo medirá en tu experimento.
+
+Apunta en la tabla del cuaderno las medias de cada ejecución y, debajo, lo que has visto.
+
+#### 5 · Corrige el bug
+
+Con lo que has visto, elige la configuración que deja `fallo_marta` a 0 en el caso de
+Marta **sin empeorar el resto de scores** y ponla en tu `.env` (`RAG__TOP_K`,
+`RAG__CHUNK_SIZE`, `RAG__ONLY_CURRENT`, `RAG__STRATEGY`). Después, lánzala tú para
+comprobar que se comporta como esperabas:
 
 ```bash
-uv run experiment rag --nombre "partida"
+uv run experiment rag --nombre "mi-configuracion"
 ```
 
-Después prueba variantes y compáralas en Langfuse (pestaña del dataset `nexus/rag`):
-
-```bash
-uv run experiment rag --rag-top-k 2
-uv run experiment rag --rag-top-k 4
-uv run experiment rag --rag-top-k 8
-uv run experiment rag --rag-chunk-size 100
-uv run experiment rag --rag-chunk-size 800
-uv run experiment rag --rag-estrategia embeddings
-uv run experiment rag --rag-solo-vigentes
-```
-
-Puedes combinar opciones y ponerle nombre a cada variante con `--nombre`, para
-reconocerla en Langfuse:
-
-```bash
-uv run experiment rag --rag-top-k 8 --rag-chunk-size 100 --nombre "top8-trozos100"
-```
-
-Elige la configuración que deja `fallo_marta` a 0 en el caso de Marta **sin
-empeorar el resto de scores**, ponla en tu `.env` (`RAG__TOP_K`, `RAG__CHUNK_SIZE`,
-`RAG__ONLY_CURRENT`, `RAG__STRATEGY`) y defiéndela con la tabla de comparación.
-
-Comprueba:
+Compárala en Langfuse con las cinco anteriores: ¿sale lo que esperabas? Defiéndela en el
+cuaderno con la tabla. Comprueba:
 
 ```bash
 uv run check 4
 ```
 
-Apunta los resultados del barrido en la tabla del cuaderno; la usaremos al cerrar el  
-capítulo.
+> [!NOTE]
+> La ejecución con embeddings se grabó con Ollama. Si eliges embeddings, para
+> lanzarlos tú necesitas Ollama con el modelo `nomic-embed-text-v2-moe` y el índice:
+> `uv run index --embeddings`.
 
 ## Para pensar
 

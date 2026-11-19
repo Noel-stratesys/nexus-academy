@@ -254,19 +254,22 @@ Su casilla en la matriz:
 - ¿Necesita un LLM? [ ] sí [ ] no · ¿Por qué?: ___
 - [ ] `fallo_marta` completado
 
-### Corrección del bug
+### La evolución de los experimentos
 
-| Variante | `fallo_marta` | `menciona_datos` | Tokens por respuesta |
-| --- | --- | --- | --- |
-| partida | | | |
-| `top_k` 2 | | | |
-| `top_k` 4 | | | |
-| `top_k` 8 | | | |
-| `chunk_size` 100 | | | |
-| `chunk_size` 800 | | | |
-| embeddings | | | |
-| solo vigentes | | | |
-| **La mía:** ___ | | | |
+| Ejecución | `menciona_datos` | Latencia | Tokens | Marta (`rag-01`): ¿llega la derogada? |
+| --- | --- | --- | --- | --- |
+| `01-partida` | | | | [ ] sí [ ] no |
+| `02-top_k-8` | | | | [ ] sí [ ] no |
+| `03-trozos-100` | | | | [ ] sí [ ] no |
+| `04-embeddings` | | | | [ ] sí [ ] no |
+| `05-solo-vigentes` | | | | [ ] sí [ ] no |
+| **La mía:** ___ | | | | `fallo_marta` ___ |
+
+- Qué sube y qué baja, y en qué ejecuciones: ___
+- Ejecuciones en las que la respuesta mejora sin que cueste más: ___
+- Ejecuciones en las que a Marta ya no le llega la normativa derogada: ___
+- Un caso que cambia entre dos ejecuciones, y qué fragmentos trajo en cada una: ___
+- Mi ejecución, comparada con las cinco: ¿salió lo que esperaba? ___
 
 ### Decisión
 

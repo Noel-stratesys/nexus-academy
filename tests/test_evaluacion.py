@@ -29,14 +29,17 @@ def test_case_ids_are_unique_in_every_dataset() -> None:
         assert len(ids) == len(set(ids)), definition.name
 
 
-def test_binary_datasets_are_balanced() -> None:
+def test_orchestrator_dataset_is_balanced() -> None:
     verdicts = Counter(
         case.expected["verdict"] == "valid" for case in DATASETS["orquestador"].cases
     )
-    answers = Counter(case.expected["responde"] for case in DATASETS["rag"].cases)
 
     assert verdicts[True] == verdicts[False]
-    assert answers[True] == answers[False]
+
+
+def test_rag_dataset_only_has_answerable_questions() -> None:
+    # Las ejecuciones grabadas del capítulo 4 se hicieron sobre estos casos.
+    assert all(case.expected["responde"] for case in DATASETS["rag"].cases)
 
 
 # --- evaluadores ---------------------------------------------------------------
