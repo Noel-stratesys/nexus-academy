@@ -37,15 +37,15 @@ Lanza **Run All** varias veces y apunta qué hace cada ventana.
 
 Por categoría (deja en blanco las que no tengan valoraciones):
 
-| Categoría | % 👍 v1 | % 👍 v2 | Valoraciones | Gana |
-| --- | --- | --- | --- | --- |
-| horarios | | | | |
-| incidencias | | | | |
-| tarifas | | | | |
-| normativa | | | | |
-| objetos_perdidos | | | | |
-| acciones | | | | |
-| devoluciones | | | | |
+| Categoría | % 👍 v1 | Valoraciones v1 | % 👍 v2 | Valoraciones v2 | Gana |
+| --- | --- | --- | --- | --- | --- |
+| horarios | | | | | |
+| incidencias | | | | | |
+| tarifas | | | | | |
+| normativa | | | | | |
+| objetos_perdidos | | | | | |
+| acciones | | | | | |
+| devoluciones | | | | | |
 
 Trazas con 👎 que he abierto:
 
@@ -279,19 +279,33 @@ La elijo porque ___ · ¿Es mi arreglo tal cual o lo he combinado con otro cambi
 
 ## 05 · Los despliegues
 
+### Mis umbrales
+
+Rellénalos **antes** de desplegar el primer cambio. No los cambies después.
+
+| Señal | Mi umbral | Si se cruza |
+| --- | --- | --- |
+| Valoración de viajeros | | [ ] rollback [ ] revisar |
+| Latencia p95 | | [ ] rollback [ ] revisar |
+| Tokens por conversación | | [ ] rollback [ ] revisar |
+| Errores | | [ ] rollback [ ] revisar |
+| | | [ ] rollback [ ] revisar |
+
+### Despliegues
+
 Una fila por cada vez que despliegas un cambio. Si lo corriges y lo vuelves a
 desplegar, usa una fila nueva.
 
-| Cambio | Puerta | Hasta qué % | Qué vi al comparar blue y green | Decisión | Motivo |
-| --- | --- | --- | --- | --- | --- |
-| A | [ ] pasa [ ] no | | | [ ] promote [ ] rollback | |
-| B | [ ] pasa [ ] no | | | [ ] promote [ ] rollback | |
-| C | [ ] pasa [ ] no | | | [ ] promote [ ] rollback | |
-| D | [ ] pasa [ ] no | | | [ ] promote [ ] rollback | |
-| | [ ] pasa [ ] no | | | [ ] promote [ ] rollback | |
-| | [ ] pasa [ ] no | | | [ ] promote [ ] rollback | |
+| Cambio | Puerta | Hasta qué % | Qué vi al comparar blue y green | Segmento que miré | Decisión | Motivo |
+| --- | --- | --- | --- | --- | --- | --- |
+| A | [ ] pasa [ ] no | | | | [ ] promote [ ] rollback | |
+| B | [ ] pasa [ ] no | | | | [ ] promote [ ] rollback | |
+| C | [ ] pasa [ ] no | | | | [ ] promote [ ] rollback | |
+| D | [ ] pasa [ ] no | | | | [ ] promote [ ] rollback | |
+| | [ ] pasa [ ] no | | | | [ ] promote [ ] rollback | |
+| | [ ] pasa [ ] no | | | | [ ] promote [ ] rollback | |
 
-Lo que he corregido:
+### Correcciones
 
 | Cambio | Qué fallaba | Dónde estaba el arreglo | Casos que he añadido al dataset |
 | --- | --- | --- | --- |
