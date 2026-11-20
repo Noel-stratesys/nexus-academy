@@ -10,8 +10,7 @@ decisión con datos.
 Primero probarás tú los dos prompts en el Playground y te harás una primera impresión.
 Después mirarás qué dicen los viajeros y, por último, desplegarás la versión que elijas.
 
-**Tiempo:** 45 minutos (20 de Playground, 20 de datos y 5 de código) · **Comprobación:**
-`uv run check 1` · **Cuaderno:** sección 01 de [`CUADERNO.md`](../CUADERNO.md)
+**Cuaderno:** sección 01 de [`CUADERNO.md`](../CUADERNO.md)
 
 ## Lo que necesitas saber
 

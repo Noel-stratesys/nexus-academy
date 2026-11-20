@@ -8,7 +8,6 @@
 > «El martes le pregunté a Nexus si la L3 funcionaba con normalidad el jueves y me dijo
 > que sí. El jueves estaba cortada por obras y llegué tarde al trabajo.»
 
-**Tiempo:** 45 minutos · **Comprobación:** `uv run check 2` ·
 **Cuaderno:** sección 02 de [`CUADERNO.md`](../CUADERNO.md)
 
 En el capítulo 1 miraste muchas trazas a la vez para comparar dos prompts. Ahora es al
