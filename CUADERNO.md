@@ -243,6 +243,12 @@ Su casilla en la matriz:
 - ¿Necesita un LLM? [ ] sí [ ] no · ¿Por qué?: ___
 - [ ] `fallo_marta` completado
 
+### Corrección del bug
+
+- Por qué el buscador le trae a Marta lo que le trae: ___
+- Mi arreglo en el `.env`: ___
+- [ ] `uv run check 4` sale en verde.
+
 ### La evolución de los experimentos
 
 | Ejecución | `menciona_datos` | Latencia | Tokens | Marta (`rag-01`): ¿llega la derogada? |
@@ -254,20 +260,20 @@ Su casilla en la matriz:
 | `05-solo-vigentes` | | | | [ ] sí [ ] no |
 | **La mía:** ___ | | | | `fallo_marta` ___ |
 
-- Qué sube y qué baja, y en qué ejecuciones: ___
-- Ejecuciones en las que la respuesta mejora sin que cueste más: ___
-- Ejecuciones en las que a Marta ya no le llega la normativa derogada: ___
+- Cómo cambia `menciona_datos` de una ejecución a otra: ___
+- El cambio con el que más mejora la respuesta: ___
+- Ejecuciones en las que a Marta ya no le llega la normativa derogada: ___ · ¿Alguna se parece a mi arreglo?: ___
 - Un caso que cambia entre dos ejecuciones, y qué fragmentos trajo en cada una: ___
 - Mi ejecución, comparada con las cinco: ¿salió lo que esperaba? ___
 
-### Decisión
+### Decisión: la configuración final
 
 `RAG__TOP_K` ___ · `RAG__CHUNK_SIZE` ___ · `RAG__ONLY_CURRENT` ___ · `RAG__STRATEGY` ___
 
-La elijo porque ___
+La elijo porque ___ · ¿Es mi arreglo tal cual o lo he combinado con otro cambio?: ___
 
 - [ ] El caso de Marta pasa y el resto no empeora.
-- [ ] `uv run check 4` sale en verde.
+- [ ] `uv run check 4` sigue en verde con la configuración final.
 
 ---
 

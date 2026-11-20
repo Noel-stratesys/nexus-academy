@@ -100,7 +100,7 @@ que debería haber respondido a Marta?
 
 #### 2 · Pon los jueces de RAG de Langfuse
 
-En **Evaluators → LLM-as-a-judge**, con la conexión al modelo del capítulo 1, crea tres
+En **Evaluators → LLM-as-a-judge**, con la conexión al modelo del capítulo 1, crea dos
 evaluadores a partir de las plantillas de la sección *Retrieval*, **sin cambiar su
 prompt**:
 
@@ -128,7 +128,7 @@ variables de cada plantilla:
 | Contexto             | Output traza contexto         |
 | Respuesta de Nexus   | Output traza respuesta        |
 
-Cuando terminen, mira los tres scores de las 8 conversaciones, empezando por la de Marta.
+Cuando terminen, mira los dos scores de las 8 conversaciones, empezando por la de Marta.
 
 ### En el código
 
@@ -159,11 +159,31 @@ Después, impleméntalo en `evaluation/evaluators.py`, en la función `fallo_mar
 qué datos recibe y qué tiene que devolver, y `menciona_datos`, más arriba, te sirve de
 modelo.
 
-#### 4 · Lee la evolución de los experimentos
+#### 4 · Corrige el bug
 
-Antes de tocar el buscador, mira lo que ya se ha probado. Entre el 7 y el 11 de
-noviembre, el equipo lanzó un experimento al día sobre el dataset `nexus/rag`, cada uno
-con un cambio en el buscador. Están en Langfuse, en la pestaña del dataset:
+Con tu evaluador ya sabes qué tiene que dejar de pasar. Averigua por qué el buscador le
+trae a Marta lo que le trae y corrígelo en tu `.env` (`RAG__TOP_K`, `RAG__CHUNK_SIZE`,
+`RAG__ONLY_CURRENT`, `RAG__STRATEGY`): la tabla de ajustes de *Lo que necesitas saber*
+dice qué hace cada uno. Prueba el buscador con la pregunta de Marta, sin pasar por el
+modelo, con las mismas opciones:
+
+```bash
+uv run index --buscar "¿Puedo subir con la bici al metro un martes a las 8:15?"
+```
+
+Cuando lo tengas, comprueba:
+
+```bash
+uv run check 4
+```
+
+Apunta en el cuaderno la causa y tu arreglo.
+
+#### 5 · Lee la evolución de los experimentos y elige la configuración final
+
+Mientras investigabas el caso de Marta, el equipo probó otras configuraciones del
+buscador. Entre el 7 y el 11 de noviembre lanzó un experimento al día sobre el dataset
+`nexus/rag`, cada uno con un cambio. Están en Langfuse, en la pestaña del dataset:
 
 | Ejecución | Qué cambia respecto a la partida |
 | --- | --- |
@@ -178,31 +198,24 @@ con un cambio en el buscador. Están en Langfuse, en la pestaña del dataset:
 - `menciona_datos`, la latencia y los tokens: ¿qué sube y qué baja de una ejecución a
 otra? ¿Hay alguna en la que la respuesta mejore sin que cueste más?
 - El caso de Marta (`rag-01`): abre su traza en cada ejecución y mira qué fragmentos
-trajo el buscador. ¿En cuáles sigue llegando la normativa derogada?
+trajo el buscador. ¿En cuáles sigue llegando la normativa derogada? ¿Alguna se parece
+a tu arreglo?
 - Un caso que cambie entre dos ejecuciones: abre sus dos trazas y compara qué fragmentos
 trajo el buscador en cada una.
 
 Estas ejecuciones no tienen `fallo_marta`: tu evaluador lo medirá en tu experimento.
-
 Apunta en la tabla del cuaderno las medias de cada ejecución y, debajo, lo que has visto.
 
-#### 5 · Corrige el bug
-
-Con lo que has visto, elige la configuración que deja `fallo_marta` a 0 en el caso de
-Marta **sin empeorar el resto de scores** y ponla en tu `.env` (`RAG__TOP_K`,
-`RAG__CHUNK_SIZE`, `RAG__ONLY_CURRENT`, `RAG__STRATEGY`). Después, lánzala tú para
-comprobar que se comporta como esperabas:
+Con lo que has visto, decide la configuración final: ¿tu arreglo tal cual o combinado
+con algún otro cambio? Tiene que seguir dejando `fallo_marta` a 0 **sin empeorar el resto
+de scores**. Ponla en tu `.env` y lánzala:
 
 ```bash
 uv run experiment rag --nombre "mi-configuracion"
 ```
 
 Compárala en Langfuse con las cinco anteriores: ¿sale lo que esperabas? Defiéndela en el
-cuaderno con la tabla. Comprueba:
-
-```bash
-uv run check 4
-```
+cuaderno con la tabla y vuelve a pasar `uv run check 4`.
 
 > [!NOTE]
 > La ejecución con embeddings se grabó con Ollama. Si eliges embeddings, para
@@ -213,4 +226,4 @@ uv run check 4
 
 - ¿De quién era el fallo: del modelo, del prompt o de los datos?
 
-Siguiente: [05 · El viernes de los despliegues](05-despliegues-de-ultima-hora.md).
+Siguiente: [05 · Los despliegues](05-despliegues-de-ultima-hora.md).
