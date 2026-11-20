@@ -1,7 +1,6 @@
 > Me dicen que Nexus va bien. Quiero un número que me lo  
 > demuestre, y saber cuánto me puedo fiar de ese número.»
 
-**Tiempo:** 50 minutos · **Comprobación:** `uv run check 3` ·
 **Cuaderno:** sección 03 de [`CUADERNO.md`](../CUADERNO.md)
 
 ## Lo que necesitas saber
@@ -75,71 +74,81 @@ caso son 4 puntos.
 
 ### En el código
 
-1. Abre `evaluation/evaluators.py` y completa `usa_tools_esperadas`. Un evaluador
+1. Lee `evaluation/experiment.py` y `evaluation/evaluators.py` y rellena en el cuaderno
+   *Cómo funcionan los evaluadores*.
 
+2. Completa `usa_tools_esperadas` en `evaluation/evaluators.py`. Un evaluador
    recibe la salida de Nexus (`output`) y lo esperado del caso (`expected_output`) y
-      devuelve un `Evaluation(name=..., value=...)`, o `[]` si el caso no tiene nada que
-      puntuar. `veredicto_correcto`, justo encima, ya está hecho: te sirve de modelo.
+   devuelve un `Evaluation(name=..., value=...)`, o `[]` si el caso no tiene nada que
+   puntuar. `veredicto_correcto`, justo encima, ya está hecho: te sirve de modelo.
 
-      `usa_tools_esperadas` da la proporción de herramientas esperadas que usó Nexus. Las
-      condiciones y un ejemplo están en su docstring.
-2. Comprueba que los datasets están en Langfuse (pestaña **Datasets**). Si no, súbelos:
+   `usa_tools_esperadas` da la proporción de herramientas esperadas que usó Nexus. Las
+   condiciones y un ejemplo están en su docstring.
+
+3. Comprueba que los datasets están en Langfuse (pestaña **Datasets**). Si no, súbelos:
+
    ```bash
-      uv run dataset
-   ```
-3. Lanza los experimentos:
-   ```bash
-      uv run experiment orquestador
-      uv run experiment agente --repeat 3
+   uv run dataset
    ```
 
-      Al terminar verás la media de cada score, su dispersión entre repeticiones y el
-      resultado por categoría. Cada ejecución queda en Langfuse como un *run* del dataset:
-      ábrelo y compara los runs entre sí.
+4. Lanza los experimentos:
+
+   ```bash
+   uv run experiment orquestador
+   uv run experiment agente --repeat 3
+   ```
+
+   Al terminar verás la media de cada score, su dispersión entre repeticiones y el
+   resultado por categoría. Cada ejecución queda en Langfuse como un *run* del dataset:
+   ábrelo y compara los runs entre sí.
 
 ### En Langfuse
 
-1. Compara el resultado de los tres experimentos de "agente".
+1. Compara el resultado de los tres experimentos de `agente`.
+
 2. **Lee las trazas del capítulo.** En **Tracing**, filtra por la etiqueta `cap3` (entorno
-
    `cap3`). Son 10 conversaciones de Nexus escritas a propósito para calibrar jueces: todas
-     dicen la verdad, pero cambian el tono y si responden a lo que se preguntó. Las cargó
-     `uv run seed` en la instalación; si no las ves, súbelas con `uv run trazas-cap3`.
+   dicen la verdad, pero cambian el tono y si responden a lo que se preguntó. Las cargó
+   `uv run seed` en la instalación; si no las ves, súbelas con `uv run trazas-cap3`.
+
 3. **Define tus notas antes de ver nada más.** Escribe en el cuaderno qué es para ti un
-
    tono brusco, uno seco y uno cercano: cómo debería hablar Nexus a un viajero. Después,
-     en **Settings → Scores → Add new score config**, crea dos scores de tipo
-     **CATEGORICAL**, con las categorías en este orden (Langfuse les pone los valores 0, 1
-     y 2 solo):
-      | Name | Value 0 | Value 1 | Value 2 |
-      | --- | --- | --- | --- |
-      | `tono_humano` | `brusco` | `seco` | `cercano` |
-      | `relevancia_humana` | `irrelevante` | `poco relevante` | `relevante` |
+   en **Settings → Scores → Add new score config**, crea dos scores de tipo
+   **CATEGORICAL**, con las categorías en este orden (Langfuse les asigna los valores 0, 1
+   y 2 automáticamente):
 
-      El orden importa: la primera categoría cuenta como 0; la del medio, como 0,5; la
-      última, como 1.
+   | Name | Value 0 | Value 1 | Value 2 |
+   | --- | --- | --- | --- |
+   | `tono_humano` | `brusco` | `seco` | `cercano` |
+   | `relevancia_humana` | `irrelevante` | `poco relevante` | `relevante` |
+
+   > **El orden importa:** la primera categoría cuenta como 0; la del medio, como 0,5;
+   > la última, como 1.
+
 4. **Anota tú.** Crea una **Annotation queue** con las 10 trazas `cap3` y los dos scores.
-
    Puntúa cada traza en los dos criterios. Todavía no hay jueces: así nada te influye.
-5. **Crea los dos jueces.** En **Evaluators → LLM-as-a-judge**, con la conexión al modelo
 
+5. **Crea los dos jueces.** En **Evaluators → LLM-as-a-judge**, con la conexión al modelo
    del capítulo 1. Aplica los dos solo a las trazas con la etiqueta `cap3`, incluidas las
-     que ya existen: al guardar la regla, marca *Also run on past observations*.
+   que ya existen: al guardar la regla, marca *Also run on past observations*.
+
    - **Tu criterio:** parte de la plantilla *Judge on One Quality Criterion* (o de un
-    evaluador en blanco). Llámalo exactamente `tono`, escribe la rúbrica con tus
-    definiciones del paso 3 y haz que devuelva una categoría con **las mismas
-    etiquetas** que tu score: `brusco`, `seco` o `cercano`.
-   - **La plantilla de Langfuse:** elige *Check Answer Relevance* y **no cambies su**  
-    **prompt**. Cambiale el nombre `answer_relevance`;
+     evaluador en blanco). Llámalo exactamente `tono`, escribe la rúbrica con tus
+     definiciones del paso 3 y haz que devuelva una categoría con **las mismas
+     etiquetas** que tu score: `brusco`, `seco` o `cercano`.
+   - **La plantilla de Langfuse:** elige *Check Answer Relevance* y **no cambies su
+     prompt**. Cámbiale el nombre a `answer_relevance`.
+
 6. **Compara:**
+
    ```bash
-      uv run judge-agreement
+   uv run judge-agreement
    ```
 
-      Verás, para cada juez, la concordancia, la kappa ponderada, la matriz de 3×3 y los
-      enlaces a las trazas en las que no coincidís. Ajusta la rúbrica de `tono` y vuelve a
-      medir hasta llegar a 0,6. Si es la plantilla la que no llega, ¿qué puedes cambiar sin
-      tocar su prompt?
+   Verás, para cada juez, la concordancia, la kappa ponderada, la matriz de 3×3 y los
+   enlaces a las trazas en las que no coincidís. Ajusta la rúbrica de `tono` y vuelve a
+   medir hasta llegar a 0,6. Si es la plantilla la que no llega, ¿qué puedes cambiar sin
+   tocar su prompt?
 
 Comprueba:
 

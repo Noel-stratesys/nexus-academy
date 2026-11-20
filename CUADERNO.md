@@ -125,7 +125,7 @@ Lo demuestra que recibió ___ y devolvió ___.
 
 ### Cómo funcionan los evaluadores
 
-Explica con tus palabras cómo se evalúa en Langfuse y cómo lo hace Nexus. Mira
+Rellénalo antes de completar `usa_tools_esperadas`, leyendo
 [`evaluation/experiment.py`](evaluation/experiment.py) y
 [`evaluation/evaluators.py`](evaluation/evaluators.py).
 
@@ -137,7 +137,6 @@ Explica con tus palabras cómo se evalúa en Langfuse y cómo lo hace Nexus. Mir
 | Quién lo ejecuta | | | |
 | Cuándo se ejecuta | | | |
 | Un ejemplo en Nexus | | | |
-| Para qué es mejor | | | |
 
 **El método que usa Nexus para lanzar un experimento**
 
@@ -173,7 +172,7 @@ Explica con tus palabras cómo se evalúa en Langfuse y cómo lo hace Nexus. Mir
 
 ### Evaluadores y experimentos
 
-- [ ] `usa_tools_esperadas`
+- [ ] He completado `usa_tools_esperadas` y `uv run pytest ejercicios/test_cap3.py::test_usa_tools_esperadas` pasa.
 
 | Experimento | Score | Media | Dispersión entre repeticiones |
 | --- | --- | --- | --- |
@@ -193,15 +192,7 @@ Una variante tendría que mejorar al menos ___ puntos para que me lo creyera.
 | `seco` | 0,5 | |
 | `brusco` | 0 | |
 
-**Mis notas de las 10 trazas** (antes de ver a los jueces)
-
-| Traza | Tono | Relevancia | Traza | Tono | Relevancia |
-| --- | --- | --- | --- | --- | --- |
-| cap3-01 | | | cap3-06 | | |
-| cap3-02 | | | cap3-07 | | |
-| cap3-03 | | | cap3-08 | | |
-| cap3-04 | | | cap3-09 | | |
-| cap3-05 | | | cap3-10 | | |
+- [ ] He anotado las 10 trazas en la annotation queue antes de crear los jueces.
 
 **Rondas**
 
@@ -216,8 +207,6 @@ En los desacuerdos de tono, el juez es más [ ] estricto [ ] permisivo que yo, s
 con respuestas que ___
 
 Con la plantilla de relevancia, lo que he tenido que ajustar es ___
-
-La traza en la que un criterio arrastró al otro (al juez o a mí): ___
 
 - [ ] `uv run check 3` sale en verde.
 
