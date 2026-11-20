@@ -137,3 +137,19 @@ def make_task(target: str, run: RunSettings) -> Task:
         return await _with_retries(converse)
 
     return agent_task
+
+
+def con_guion_de_caso(task: Task) -> Task:
+    """``task`` con el modelo con guion: cada caso del dataset hace de guion.
+
+    Hace falta ``nexus.simulation.modelo.instalar()`` antes de crear la tarea.
+    """
+
+    from nexus.simulation.modelo import guion_de_caso, guion_scope
+
+    async def tarea(*, item: Any, **kwargs: Any) -> dict[str, Any]:
+        guion = guion_de_caso(item.input or {}, item.expected_output or {}, item.metadata)
+        with guion_scope(guion):
+            return await task(item=item, **kwargs)
+
+    return tarea

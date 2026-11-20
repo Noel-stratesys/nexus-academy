@@ -4,6 +4,9 @@ Cada conversación es un turno de ``run_turn`` con un viajero, su petición (un
 ``Scenario``) y la versión de Nexus que le toca (un ``Assignment``). El viajero aprueba o
 rechaza las acciones según ``scenario.approvals`` y, al acabar, puede valorar la
 respuesta (``feedback_for``): esa valoración es el score ``user_feedback`` de la traza.
+
+``run_traffic`` (``uv run simulate``) no llama a ningún modelo de lenguaje: Nexus usa el
+modelo con guion (``nexus.simulation.modelo``), que tarda lo que tardaría uno de verdad.
 """
 
 import asyncio
@@ -22,6 +25,7 @@ from nexus.llm.prompts import prompt_label_scope, prompt_version_scope
 from nexus.runner import Approver, run_turn
 from nexus.settings import Models, RagSettings, settings
 from nexus.simulation.feedback import comentario_for, feedback_for
+from nexus.simulation.modelo import Guion, guion_scope, instalar
 from nexus.simulation.scenarios import pick_scenario
 from nexus.simulation.types import Assignment, Scenario, SimResult
 
@@ -122,26 +126,30 @@ async def run_traffic(
 
     ``assign(user_id)`` decide a qué versión va cada viajero. La valoración de cada
     conversación queda en Langfuse como el score ``user_feedback`` (1 = 👍, 0 = 👎).
+    Nexus contesta con el modelo con guion: sin tokens, pero con la latencia de un modelo.
     """
 
+    instalar(latencia=True)
     dia = hoy or settings.nexus_today
     rng = random.Random(seed)
-    peticiones = [pick_scenario(rng, dia) for _ in range(n)]
+    peticiones = [pick_scenario(rng, dia, proximos=True) for _ in range(n)]
     asignaciones = [assign(scenario.viajero) for scenario in peticiones]
     graphs = {flags: build_graph(flags=flags) for flags in {a.flags for a in asignaciones}}
     semaforo = asyncio.Semaphore(max(1, concurrency))
     entorno = environment or settings.environment
 
     async def una(scenario: Scenario, assignment: Assignment) -> SimResult:
+        thread_id = uuid4().hex
         async with semaforo:
-            result = await conversar(
-                graphs[assignment.flags],
-                scenario,
-                assignment,
-                thread_id=uuid4().hex,
-                environment=entorno,
-                tags=tags,
-            )
+            with guion_scope(Guion(scenario, thread_id)):
+                result = await conversar(
+                    graphs[assignment.flags],
+                    scenario,
+                    assignment,
+                    thread_id=thread_id,
+                    environment=entorno,
+                    tags=tags,
+                )
         if result.trace_id and not result.error:
             result.feedback = feedback_for(
                 scenario, result.answer, result.tool_calls, semilla=result.trace_id

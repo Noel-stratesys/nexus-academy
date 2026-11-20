@@ -455,7 +455,9 @@ def test_gate_runs_the_experiment_on_green(
 
     cli.release(["gate", "--repeat", "2"])
 
-    assert calls == [["agente", "--release", "green", "--gate", "--repeat=2"]]
+    assert calls == [
+        ["agente", "--release", "green", "--gate", "--sin-llm", "--repeat=2", "--concurrencia=8"]
+    ]
 
 
 # --- CLI: simulate ------------------------------------------------------------------------------

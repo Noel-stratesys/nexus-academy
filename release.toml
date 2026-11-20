@@ -22,3 +22,7 @@ usa_tools_esperadas = 0.8
 evita_tools_prohibidas = 1.0
 aprobacion_correcta = 0.9
 menciona_datos = 0.6
+
+# Extra: la alarma de tokens. Salta con una llamada de más tokens (0 = sin alarma).
+[alarma]
+tokens_por_llamada = 0

@@ -25,6 +25,7 @@ COMMANDS = {
     "check": "Comprueba una misión: uv run check 0 … uv run check 5.",
     "release": "Despliegue por fases: status, prepare, shift, rollback, promote.",
     "simulate": "Simula viajeros hablando con Nexus (tráfico de producción).",
+    "alarma": "Extra del capítulo 5: alarma de tokens por llamada (--umbral, --provocar).",
     "help": "Esta ayuda.",
 }
 

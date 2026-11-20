@@ -48,8 +48,9 @@ class DatasetDefinition:
 def upload(definition: DatasetDefinition, langfuse: Any) -> int:
     """Crea el dataset (o lo actualiza) con todos sus casos.
 
-    Los casos que están en Langfuse pero ya no en el código se archivan: así el dataset
-    de Langfuse tiene los mismos casos activos que el código.
+    Los casos que están en Langfuse pero ya no en el código se archivan, y los que vuelven
+    al código se reactivan: así el dataset de Langfuse tiene los mismos casos activos que
+    el código.
     """
 
     langfuse.create_dataset(
@@ -64,6 +65,8 @@ def upload(definition: DatasetDefinition, langfuse: Any) -> int:
             input=case.input(),
             expected_output=case.expected,
             metadata=case.metadata(),
+            # Un caso que se quitó y se vuelve a añadir estaba archivado: vuelve a estar activo.
+            status="ACTIVE",
         )
     _archive_removed(definition, langfuse)
     langfuse.flush()

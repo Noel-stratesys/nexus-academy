@@ -8,6 +8,8 @@ puede leer a mano:
   porcentaje de viajeros que lo reciben (``traffic``, de 0 a 100).
 - ``[gate]``: la puerta. La media de cada score del experimento tiene que llegar al
   mínimo que se indica.
+- ``[alarma]``: el extra del capítulo. ``tokens_por_llamada`` es el umbral de la alarma de
+  tokens (0 = sin alarma). Lo escribe ``uv run alarma --umbral N``.
 - ``[[historial]]``: lo que se ha hecho, en orden, con su motivo.
 
 Se lee con ``tomllib`` (biblioteca estándar) y se escribe con un escritor pequeño que
@@ -76,6 +78,8 @@ class ReleaseState:
     green: Green = Green()
     gate: dict[str, float] = field(default_factory=lambda: dict(DEFAULT_GATE))
     historial: tuple[Evento, ...] = ()
+    # Umbral de la alarma de tokens: una llamada al modelo con más tokens la hace saltar.
+    alarma_tokens: int = 0
 
     def with_event(self, accion: str, cambio: str = "", detalle: str = "") -> "ReleaseState":
         """El mismo estado con un evento más en el historial."""
@@ -118,6 +122,7 @@ def parse_state(data: dict[str, Any]) -> ReleaseState:
             puerta=str(green.get("puerta", "")),
         ),
         gate={str(name): float(value) for name, value in data.get("gate", DEFAULT_GATE).items()},
+        alarma_tokens=int(data.get("alarma", {}).get("tokens_por_llamada", 0)),
         historial=tuple(
             Evento(
                 fecha=str(item.get("fecha", "")),
@@ -187,6 +192,10 @@ def dump_state(state: ReleaseState) -> str:
         "# La puerta: media mínima de cada score del experimento sobre el dataset agente.",
         "[gate]",
         *(f"{name} = {_number(value)}" for name, value in state.gate.items()),
+        "",
+        "# Extra: la alarma de tokens. Salta con una llamada de más tokens (0 = sin alarma).",
+        "[alarma]",
+        f"tokens_por_llamada = {state.alarma_tokens}",
     ]
     for evento in state.historial:
         lines += [

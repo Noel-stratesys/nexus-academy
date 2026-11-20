@@ -9,7 +9,8 @@
 
 Con ``--release blue|green`` se prueba una de las dos versiones de ``release.toml`` (su
 label y sus flags). Con ``--gate`` se comparan las medias con los mínimos de la puerta y
-el comando termina con error si alguno no llega.
+el comando termina con error si alguno no llega. Con ``--sin-llm`` Nexus usa el modelo con
+guion en lugar de un modelo de lenguaje: es lo que hace ``uv run release gate``.
 
 Cada ejecución queda en Langfuse como un *run* del dataset, con la configuración en su
 metadata, y se puede comparar con otras en la pestaña del dataset.
@@ -26,7 +27,7 @@ from typing import Any
 
 from evaluation.datasets import DATASETS
 from evaluation.evaluators import EVALUATORS, averages
-from evaluation.tasks import RunSettings, make_task
+from evaluation.tasks import RunSettings, con_guion_de_caso, make_task
 from nexus.prompts import PROMPTS
 from nexus.settings import Models, settings
 from release.gate import check_gate, format_gate, gate_passed
@@ -72,6 +73,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--concurrencia", type=int, default=1, help="Casos a la vez (cuidado con los límites)."
     )
     parser.add_argument("--detalle", action="store_true", help="Muestra el resultado de cada caso.")
+    parser.add_argument(
+        "--sin-llm",
+        action="store_true",
+        help="Nexus con el modelo con guion: sin tokens ni proveedor (la puerta del capítulo 5).",
+    )
     parser.add_argument(
         "--limite",
         type=int,
@@ -195,6 +201,11 @@ def run(args: argparse.Namespace) -> list[dict[str, float]]:
 
     definition = DATASETS[args.dataset]
     label, flags, variant = release_settings(args)
+    sin_llm = bool(getattr(args, "sin_llm", False))
+    if sin_llm:
+        from nexus.simulation.modelo import instalar
+
+        instalar(latencia=True)
     run_settings = RunSettings(
         prompt_versions=prompt_versions(langfuse, label),
         models=_models(args.model),
@@ -219,8 +230,8 @@ def run(args: argparse.Namespace) -> list[dict[str, float]]:
         "label": label,
         "release": getattr(args, "release", None) or "-",
         "prompts": ", ".join(f"{n} v{v}" for n, v in run_settings.prompt_versions.items()),
-        "orchestrator": run_settings.models.orchestrator.model,
-        "executor": run_settings.models.executor.model,
+        "orchestrator": "modelo con guion" if sin_llm else run_settings.models.orchestrator.model,
+        "executor": "modelo con guion" if sin_llm else run_settings.models.executor.model,
         "rag": run_settings.rag.model_dump_json(),
         "flags": ", ".join(sorted(run_settings.flags)) or "-",
     }
@@ -228,6 +239,9 @@ def run(args: argparse.Namespace) -> list[dict[str, float]]:
     for key, value in metadata.items():
         print(f"  {key}: {value}")
 
+    task = make_task(definition.target, run_settings)
+    if sin_llm:
+        task = con_guion_de_caso(task)
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     scores_by_run: list[dict[str, float]] = []
     categories: dict[str, Any] = {}
@@ -238,7 +252,7 @@ def run(args: argparse.Namespace) -> list[dict[str, float]]:
             run_name=f"{variant}-{stamp}{suffix}",
             description=f"{variant} sobre {definition.name}",
             data=items,
-            task=make_task(definition.target, run_settings),
+            task=task,
             evaluators=EVALUATORS[args.dataset],
             run_evaluators=[averages],
             max_concurrency=args.concurrencia,

@@ -7,9 +7,14 @@
     uv run simulate --n 40                # viajeros simulados contra blue y green
     uv run release rollback --motivo "…"  # green vuelve al 0 % (el cambio se queda)
     uv run release promote --motivo "…"   # green pasa a ser blue (production)
+    uv run alarma --provocar              # extra: la alarma de tokens (release/alarma.py)
 
 El estado está en ``release.toml``. Los prompts viven en Langfuse: blue lee los que
 tienen el label ``production`` y green, los que tienen el label ``green``.
+
+Ni la puerta ni el simulador llaman a un modelo de lenguaje: Nexus contesta con el modelo
+con guion (``nexus.simulation.modelo``), que reacciona a los prompts y a las herramientas
+como uno de verdad. Así cada paso tarda segundos y no gasta tokens.
 """
 
 import argparse
@@ -17,8 +22,10 @@ import asyncio
 import math
 import os
 import sys
+import time
 from collections.abc import Sequence
 from dataclasses import replace
+from datetime import UTC, datetime, timedelta
 from typing import Any, NoReturn
 
 from nexus.data import viajeros
@@ -27,6 +34,9 @@ from nexus.simulation.types import SimResult
 from release.cambios import CAMBIOS, CambioError
 from release.router import bucket, router
 from release.state import Green, ReleaseState, load_state, save_state
+
+# Casos o conversaciones a la vez: sin proveedor de por medio, no hay límites que cuidar.
+CONCURRENCIA = 8
 
 # Las terminales de Windows no siempre escriben en UTF-8: tildes y "ç" se verían mal.
 for _stream in (sys.stdout, sys.stderr):
@@ -187,7 +197,7 @@ def gate(state: ReleaseState, extra: Sequence[str]) -> None:
     from evaluation.experiment import main as experiment
 
     print(f"Puerta del cambio {clave}: experimento sobre el dataset agente.\n")
-    experiment(["agente", "--release", "green", "--gate", *extra])
+    experiment(["agente", "--release", "green", "--gate", "--sin-llm", *extra])
 
 
 # --- shift, rollback y promote ---------------------------------------------------
@@ -282,7 +292,9 @@ def _parser() -> argparse.ArgumentParser:
     prepare_cmd.add_argument("cambio", help=f"Uno de: {', '.join(CAMBIOS)}.")
     gate_cmd = commands.add_parser("gate", help="La puerta: experimento sobre green.")
     gate_cmd.add_argument("--repeat", type=int, help="Repite el experimento N veces.")
-    gate_cmd.add_argument("--concurrencia", type=int, help="Casos a la vez.")
+    gate_cmd.add_argument(
+        "--concurrencia", type=int, default=CONCURRENCIA, help=f"Casos a la vez ({CONCURRENCIA})."
+    )
     shift_cmd = commands.add_parser("shift", help="Porcentaje de viajeros que van a green.")
     shift_cmd.add_argument("percent", type=int, metavar="PORCENTAJE", help="De 0 a 100.")
     shift_cmd.add_argument("--forzar", action="store_true", help="Sin haber pasado la puerta.")
@@ -380,7 +392,12 @@ def simulate(argv: list[str] | None = None) -> None:
     )
     parser.add_argument("--n", type=int, default=40, help="Conversaciones (por defecto: 40).")
     parser.add_argument("--seed", type=int, default=0, help="Semilla: qué viajeros y peticiones.")
-    parser.add_argument("--concurrencia", type=int, default=1, help="Conversaciones a la vez.")
+    parser.add_argument(
+        "--concurrencia",
+        type=int,
+        default=CONCURRENCIA,
+        help=f"Conversaciones a la vez (por defecto: {CONCURRENCIA}).",
+    )
     args = parser.parse_args(argv)
 
     from nexus.simulation import run_traffic
@@ -412,3 +429,165 @@ def simulate(argv: list[str] | None = None) -> None:
         f"Dashboards → «{DASHBOARD}», por release."
     )
     print("Mira también por segmento (idioma, categoría): un fallo pequeño se esconde en la media.")
+
+
+# --- Entrada de uv run alarma (extra) --------------------------------------------
+
+# Minutos hacia atrás en que se buscan llamadas al modelo.
+MINUTOS_ALARMA = 15
+# Segundos que se espera a que Langfuse registre la conversación provocada.
+ESPERA_ALARMA_S = 90
+
+
+def _llamadas_recientes(langfuse: Any, desde: datetime, trace_id: str | None = None) -> list[Any]:
+    """Las llamadas al modelo (generations) de producción desde ``desde``."""
+
+    from release.alarma import Llamada
+
+    llamadas, cursor = [], None
+    while True:
+        respuesta = langfuse.api.observations.get_many(
+            type="GENERATION",
+            environment="production",
+            from_start_time=desde,
+            trace_id=trace_id,
+            fields="core,basic,usage,trace_context",
+            limit=1000,
+            cursor=cursor,
+        )
+        for observacion in respuesta.data:
+            uso = observacion.usage_details or {}
+            llamadas.append(
+                Llamada(
+                    trace_id=observacion.trace_id,
+                    release=observacion.release or "",
+                    tokens_entrada=int(uso.get("input", 0)),
+                    tokens_salida=int(uso.get("output", 0)),
+                    inicio=observacion.start_time,
+                )
+            )
+        cursor = respuesta.meta.cursor
+        if not respuesta.data or not cursor:
+            return llamadas
+
+
+def _provocar(state: ReleaseState, langfuse: Any) -> str | None:
+    """Un viajero pega en el chat un texto enorme y pregunta: una llamada que se pasa."""
+
+    from uuid import uuid4
+
+    from nexus.graph import build_graph
+    from nexus.rag.documents import DOCS_DIR
+    from nexus.simulation.modelo import Guion, guion_scope, instalar
+    from nexus.simulation.scenarios import scenarios
+    from nexus.simulation.traffic import conversar
+
+    instalar(latencia=True)
+    base = next(s for s in scenarios(viajero="1001") if s.scenario_id == "nor-perro-es")
+    # Unos 4 caracteres por token: el texto pegado pasa el umbral con holgura.
+    caracteres = (int(state.alarma_tokens * 1.3) + 500) * 4
+    normativa = (DOCS_DIR / "normativa-viajeros-2026.md").read_text(encoding="utf-8")
+    pegado = ((normativa + "\n\n") * (caracteres // len(normativa) + 1))[:caracteres]
+    mensaje = f"{pegado}\n\nLo he copiado de la web y no me aclaro. {base.mensaje}"
+    scenario = replace(base, mensaje=mensaje)
+    assignment = router(state)(scenario.viajero)
+    thread_id = uuid4().hex
+    with guion_scope(Guion(scenario, thread_id)):
+        resultado = asyncio.run(
+            conversar(
+                build_graph(flags=assignment.flags),
+                scenario,
+                assignment,
+                thread_id=thread_id,
+                environment="production",
+                tags=("alarma",),
+            )
+        )
+    langfuse.flush()
+    return resultado.trace_id
+
+
+def _url_traza(langfuse: Any, trace_id: str) -> str:
+    try:
+        return str(langfuse.get_trace_url(trace_id=trace_id))
+    except Exception:  # noqa: BLE001 - sin URL, basta con el id
+        return trace_id
+
+
+def alarma(argv: list[str] | None = None) -> None:
+    """``uv run alarma``: el extra del capítulo 5, una alarma de tokens por llamada."""
+
+    parser = argparse.ArgumentParser(
+        prog="alarma", description="Alarma de tokens: llamadas al modelo que superan un umbral."
+    )
+    parser.add_argument(
+        "--umbral", type=int, metavar="TOKENS", help="Guarda el umbral en release.toml y sale."
+    )
+    parser.add_argument(
+        "--minutos",
+        type=int,
+        default=MINUTOS_ALARMA,
+        help=f"Mira las llamadas de los últimos N minutos (por defecto: {MINUTOS_ALARMA}).",
+    )
+    parser.add_argument(
+        "--provocar",
+        action="store_true",
+        help="Antes de mirar, un viajero pega un texto enorme: la alarma tiene que saltar.",
+    )
+    args = parser.parse_args(argv)
+    state = load_state()
+
+    if args.umbral is not None:
+        if args.umbral < 0:
+            _fail("El umbral es un número de tokens: 0 o más (0 apaga la alarma).")
+        save_state(replace(state, alarma_tokens=args.umbral))
+        apagada = " (alarma apagada)" if args.umbral == 0 else ""
+        print(f"Umbral de la alarma: {args.umbral} tokens por llamada{apagada}.")
+        print("Guardado en release.toml, sección [alarma].")
+        return
+    umbral = state.alarma_tokens
+    if umbral <= 0:
+        _fail(
+            "La alarma no tiene umbral. Elígelo antes de mirar los datos: "
+            "uv run alarma --umbral <tokens>"
+        )
+
+    from release.alarma import llamadas_en_alarma
+
+    langfuse = _langfuse()
+    desde = datetime.now(UTC) - timedelta(minutes=args.minutos)
+    if args.provocar:
+        print("Provocando la alarma: un viajero pega en el chat la normativa entera…")
+        trace_id = _provocar(state, langfuse)
+        if trace_id is None:
+            _fail("La conversación provocada falló: mira el error en Langfuse.")
+        print(f"  Conversación {trace_id}. Esperando a que Langfuse la registre…")
+        limite = time.monotonic() + ESPERA_ALARMA_S
+        while not _llamadas_recientes(langfuse, desde, trace_id):
+            if time.monotonic() > limite:
+                _fail("Langfuse aún no tiene la conversación: vuelve a probar con uv run alarma.")
+            time.sleep(2)
+        print()
+
+    llamadas = _llamadas_recientes(langfuse, desde)
+    try:
+        en_alarma = llamadas_en_alarma(llamadas, umbral)
+    except NotImplementedError as error:
+        _fail(f"{error} Está en release/alarma.py.")
+    print(
+        f"Umbral: más de {umbral} tokens por llamada. Llamadas al modelo en los últimos "
+        f"{args.minutos} minutos: {len(llamadas)}."
+    )
+    if not en_alarma:
+        print("✔ Ninguna llamada supera el umbral.")
+        return
+    print(f"\n🚨 ALARMA: {len(en_alarma)} llamada(s) con más de {umbral} tokens.\n")
+    print(f"  {'hora':<8} {'release':<8} {'tokens':>8}  traza")
+    for llamada in en_alarma[:10]:
+        hora = llamada.inicio.astimezone().strftime("%H:%M:%S")
+        url = _url_traza(langfuse, llamada.trace_id)
+        print(f"  {hora:<8} {llamada.release or '-':<8} {llamada.tokens:>8}  {url}")
+    if len(en_alarma) > 10:
+        print(f"  … y {len(en_alarma) - 10} más.")
+    # Sale con error: así un cron o un pipeline puede avisar a alguien.
+    sys.exit(1)

@@ -15,17 +15,27 @@ versión de Nexus. A partir de ahí, el modelo decide con lo que ve, como uno de
 - El tono sale del prompt que recibe: cercano si el prompt pide cercanía (el de Jordi, o el
   cambio A), sobrio si no. Si el prompt no le obliga a consultar las herramientas antes de
   dar horarios y el guion dice ``inventa``, da la hora sin consultarla.
+
+Los despliegues del capítulo 5 (``uv run release gate`` y ``uv run simulate``) usan el
+mismo modelo, así que tampoco gastan tokens. Ahí el modelo también reacciona a los
+prompts y a las herramientas de cada despliegue, como lo haría uno de verdad.
+
+En la puerta, cada caso del dataset ``agente`` hace de guion (``guion_de_caso``): el modelo
+usa las herramientas que espera el caso y da los datos que pide. Con ``instalar(latencia=True)``
+cada llamada tarda lo que tardaría la de un modelo de verdad con esos tokens.
 """
 
 import ast
+import asyncio
 import hashlib
 import json
 import re
-from collections.abc import Iterator, Sequence
+import time
+from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
-from dataclasses import dataclass
-from datetime import date
+from dataclasses import dataclass, replace
+from datetime import date, timedelta
 from typing import Any
 
 from langchain_core.callbacks import AsyncCallbackManagerForLLMRun, CallbackManagerForLLMRun
@@ -40,12 +50,27 @@ from langchain_core.messages import (
 from langchain_core.outputs import ChatGeneration, ChatResult
 from langchain_core.utils.function_calling import convert_to_openai_tool
 
-from nexus.data import lineas
+from nexus.data import estaciones, lineas, load
 from nexus.data import viajero as buscar_viajero
 from nexus.rag.documents import load_documents
 from nexus.simulation.types import Scenario
 
 ACCIONES = ("abrir_reclamacion", "solicitar_devolucion", "suscribir_alertas")
+
+# Lo que tarda una llamada simulada: un mínimo, más lo que cuesta leer la entrada y
+# escribir la salida (segundos por token). Del orden de un modelo de 70B en la nube.
+LATENCIA_BASE_S = 0.2
+LATENCIA_ENTRADA_S = 1 / 15000
+LATENCIA_SALIDA_S = 1 / 150
+
+# Si las llamadas tardan lo que tardaría un modelo de verdad (``instalar(latencia=True)``).
+_latencia = {"activa": False}
+
+
+def latencia_simulada(entrada: int, salida: int) -> float:
+    """Los segundos que tarda una llamada con ``entrada`` y ``salida`` tokens."""
+
+    return LATENCIA_BASE_S + entrada * LATENCIA_ENTRADA_S + salida * LATENCIA_SALIDA_S
 
 
 @dataclass(frozen=True)
@@ -148,7 +173,10 @@ class ModeloConGuion(BaseChatModel):
         run_manager: CallbackManagerForLLMRun | None = None,
         **kwargs: Any,
     ) -> ChatResult:
-        return ChatResult(generations=[ChatGeneration(message=self._responder(messages))])
+        message = self._responder(messages)
+        if _latencia["activa"]:
+            time.sleep(_segundos(message))
+        return ChatResult(generations=[ChatGeneration(message=message)])
 
     async def _agenerate(
         self,
@@ -157,7 +185,10 @@ class ModeloConGuion(BaseChatModel):
         run_manager: AsyncCallbackManagerForLLMRun | None = None,
         **kwargs: Any,
     ) -> ChatResult:
-        return ChatResult(generations=[ChatGeneration(message=self._responder(messages))])
+        message = self._responder(messages)
+        if _latencia["activa"]:
+            await asyncio.sleep(_segundos(message))
+        return ChatResult(generations=[ChatGeneration(message=message)])
 
     # --- decisiones -------------------------------------------------------------------
 
@@ -174,10 +205,20 @@ class ModeloConGuion(BaseChatModel):
         ultima = max(i for i, message in enumerate(messages) if isinstance(message, HumanMessage))
         turno = messages[ultima + 1 :]
         paso = sum(1 for m in turno if isinstance(m, AIMessage) and m.tool_calls)
-        pasos = _pasos(guion, sistema)
+        # Si una herramienta pidió volver a consultar, el modelo la vuelve a llamar.
+        repetir = _pendientes(turno)
+        if repetir:
+            return self._mensaje(messages, "", repetir, guion, paso)
+        es_caso = bool(guion.scenario.expected.get("caso"))
+        pasos = _pasos_caso(guion, sistema, nombres) if es_caso else _pasos(guion, sistema, nombres)
         if paso < len(pasos):
             return self._mensaje(messages, "", pasos[paso], guion, paso)
-        texto = redactar(guion, sistema, _resultados(turno))
+        resultados = _resultados(turno)
+        texto = (
+            redactar_caso(guion, sistema, resultados)
+            if es_caso
+            else redactar(guion, sistema, resultados)
+        )
         return self._mensaje(messages, texto, [], guion, paso)
 
     def _mensaje(
@@ -220,10 +261,21 @@ class ModeloConGuion(BaseChatModel):
         )
 
 
-def instalar() -> None:
-    """Hace que ``nexus.llm.models.chat_model`` cree modelos con guion en vez de los reales."""
+def _segundos(message: AIMessage) -> float:
+    uso = message.usage_metadata or {}
+    return latencia_simulada(int(uso.get("input_tokens", 0)), int(uso.get("output_tokens", 0)))
+
+
+def instalar(*, latencia: bool = False) -> None:
+    """Hace que ``nexus.llm.models.chat_model`` cree modelos con guion en vez de los reales.
+
+    Con ``latencia``, cada llamada tarda lo que tardaría la de un modelo de verdad (el
+    historial no lo necesita: reescribe las horas de sus trazas).
+    """
 
     import nexus.llm.models as models
+
+    _latencia["activa"] = latencia
 
     def crear(model: str, **parametros: Any) -> ModeloConGuion:
         proveedor, _, nombre = model.partition(":")
@@ -255,13 +307,87 @@ def _es_cercano(sistema: str) -> bool:
     return "cercanía" in sistema.lower()
 
 
-def _pasos(guion: Guion, sistema: str) -> list[list[tuple[str, dict[str, Any]]]]:
+def _responde_en_su_idioma(sistema: str) -> bool:
+    """Si el prompt tiene alguna regla sobre el idioma de la respuesta.
+
+    Sin ella, el modelo contesta en el idioma del prompt: en castellano.
+    """
+
+    return "idioma" in sistema.lower()
+
+
+def _devoluciones_agiles(sistema: str) -> bool:
+    """Si el prompt pide tramitar las devoluciones sin consultar antes la normativa."""
+
+    return "devoluciones ágiles" in sistema.lower()
+
+
+def _idioma_respuesta(guion: Guion, sistema: str) -> Guion:
+    """El guion con el idioma en que contestará el modelo con este prompt."""
+
+    if _responde_en_su_idioma(sistema) or guion.scenario.idioma == "es":
+        return guion
+    return replace(guion, scenario=replace(guion.scenario, idioma="es"))
+
+
+def _pendientes(turno: Sequence[BaseMessage]) -> list[tuple[str, dict[str, Any]]]:
+    """Las llamadas de la última vuelta cuya herramienta pidió volver a consultar."""
+
+    ultima = next((m for m in reversed(turno) if isinstance(m, AIMessage) and m.tool_calls), None)
+    if ultima is None:
+        return []
+    ids = {call["id"] for call in ultima.tool_calls}
+    calculando = {
+        message.tool_call_id
+        for message in turno
+        if isinstance(message, ToolMessage)
+        and message.tool_call_id in ids
+        and leer_resultado(message.content).get("estado") == "calculando"
+    }
+    return [
+        (call["name"], dict(call["args"])) for call in ultima.tool_calls if call["id"] in calculando
+    ]
+
+
+def _args_devolucion(scenario: Scenario) -> dict[str, Any]:
+    """La devolución que pide el modelo cuando no consulta antes la normativa."""
+
+    llamadas = scenario.expected.get("llamadas", [])
+    pedida = next((c["args"] for c in llamadas if c["name"] == "solicitar_devolucion"), None)
+    if pedida is not None:
+        return dict(pedida)
+    verdad = scenario.expected.get("verdad", {})
+    return {
+        "titulo": verdad.get("titulo", "senzill"),
+        "importe": verdad.get("importe_viaje") or _precio_senzill(),
+        "motivo": "retraso",
+        "incidencia_id": verdad.get("incidencia"),
+    }
+
+
+def _precio_senzill() -> float:
+    return float(load("tarifas")["titulos"]["senzill"]["precios"]["1"])
+
+
+def _pasos(
+    guion: Guion, sistema: str, disponibles: Sequence[str] = ()
+) -> list[list[tuple[str, dict[str, Any]]]]:
     """Las llamadas a herramientas de cada vuelta del agente, en orden."""
 
     scenario = guion.scenario
     llamadas = [
         (call["name"], dict(call["args"])) for call in scenario.expected.get("llamadas", [])
     ]
+    if scenario.categoria == "devoluciones" and _devoluciones_agiles(sistema):
+        return [[("solicitar_devolucion", _args_devolucion(scenario))]]
+    if scenario.expected.get("verdad", {}).get("dato") == "proximos":
+        args = dict(llamadas[0][1])
+        if "proximos_trenes" in disponibles:
+            return [[("proximos_trenes", args)]]
+        # Sin la herramienta nueva, lo más parecido: la frecuencia de ahora.
+        hora = args.get("hora", "08:00")
+        horario = {"linea": args["linea"], "estacion": args["estacion"], "dia": "hoy", "hora": hora}
+        return [[("consultar_horario", horario)]]
     if scenario.categoria == "horarios" and guion.inventa and not _obliga_a_consultar(sistema):
         return []
     if scenario.categoria == "incidencias" and scenario.expected["verdad"].get("sin_linea"):
@@ -533,7 +659,11 @@ def _incidencia(incidencia: dict[str, Any], idioma: str) -> str:
 def redactar(guion: Guion, sistema: str, resultados: Sequence[Resultado]) -> str:
     """La respuesta final al viajero, con lo que devolvieron las herramientas."""
 
+    guion = _idioma_respuesta(guion, sistema)
     scenario = guion.scenario
+    if scenario.expected.get("verdad", {}).get("dato") == "proximos":
+        texto = _proximos(guion, resultados)
+        return _con_cercania(texto, guion) if _es_cercano(sistema) else texto
     redactores = {
         "horarios": _horarios,
         "incidencias": _incidencias,
@@ -655,6 +785,63 @@ def _horarios(guion: Guion, resultados: Sequence[Resultado]) -> str:
         f"El último tren de la {linea} pasa por {estacion} {dia} a las {valor}.",
         f"L'últim metro de la {linea} passa per {estacion} {dia} a les {valor}.",
         f"The last {linea} train leaves {estacion} {dia} at {valor}.",
+    )
+
+
+# Próximos trenes --------------------------------------------------------------------------
+
+
+def _todavia_calculando(idioma: str) -> str:
+    return _t(
+        idioma,
+        "Todavía estoy calculando los próximos trenes. Vuelve a preguntarme en unos segundos.",
+        "Encara estic calculant els propers metros. Torna-m'ho a preguntar d'aquí a uns segons.",
+        "I'm still working out the next trains. Please ask me again in a few seconds.",
+    )
+
+
+def _proximos(guion: Guion, resultados: Sequence[Resultado]) -> str:
+    scenario = guion.scenario
+    idioma = scenario.idioma
+    args = scenario.expected["llamadas"][0]["args"]
+    linea, estacion = args["linea"], args["estacion"]
+    datos = resultados[-1].datos if resultados else {}
+    if datos.get("estado") == "calculando":
+        return _todavia_calculando(idioma)
+    if "error" in datos:
+        return _t(
+            idioma,
+            f"No he podido consultar los próximos trenes: {datos['error']}",
+            f"No he pogut consultar els propers metros: {datos['error']}",
+            f"I couldn't check the next trains: {datos['error']}",
+        )
+    trenes = [tren["hora"] for tren in datos.get("proximos_trenes", [])]
+    if trenes:
+        primeros, ultimo = ", ".join(trenes[:-1]), trenes[-1]
+        lista = _t(idioma, f"{primeros} y {ultimo}", f"{primeros} i {ultimo}",
+                   f"{primeros} and {ultimo}") if primeros else ultimo  # fmt: skip
+        return _t(
+            idioma,
+            f"Los próximos trenes de la {linea} pasan por {estacion} a las {lista}.",
+            f"Els propers metros de la {linea} passen per {estacion} a les {lista}.",
+            f"The next {linea} trains stop at {estacion} at {lista}.",
+        )
+    frecuencia = datos.get("frecuencia_min")
+    if frecuencia:
+        return _t(
+            idioma,
+            f"No tengo los trenes en tiempo real, pero ahora la {linea} pasa por {estacion} "
+            f"cada {frecuencia} minutos.",
+            f"No tinc els metros en temps real, però ara la {linea} passa per {estacion} cada "
+            f"{frecuencia} minuts.",
+            f"I don't have real-time trains, but the {linea} stops at {estacion} every "
+            f"{frecuencia} minutes right now.",
+        )
+    return _t(
+        idioma,
+        f"Ahora no pasan más trenes de la {linea} por {estacion}.",
+        f"Ara no passen més metros de la {linea} per {estacion}.",
+        f"There are no more {linea} trains at {estacion} now.",
     )
 
 
@@ -1013,3 +1200,268 @@ def _devoluciones(guion: Guion, resultados: Sequence[Resultado]) -> str:
         "Sorry, journeys are only refunded for delays of more than 30 minutes caused by a "
         "registered MdV incident.",
     )
+
+
+# --- La puerta: cada caso del dataset agente hace de guion ---------------------------------
+
+MESES_CASO = {
+    **{mes: numero for numero, mes in enumerate(MESES["es"], start=1)},
+    **{mes: numero for numero, mes in enumerate(MESES["ca"], start=1)},
+    **{mes.lower(): numero for numero, mes in enumerate(MESES["en"], start=1)},
+}
+DIAS_SEMANA_CASO = (
+    "lunes|martes|miércoles|jueves|viernes|sábado|domingo|"
+    "dilluns|dimarts|dimecres|dijous|divendres|dissabte|diumenge|"
+    "monday|tuesday|wednesday|thursday|friday|saturday|sunday"
+)
+
+
+def guion_de_caso(
+    entrada: Mapping[str, Any], esperado: Mapping[str, Any], metadata: Mapping[str, Any] | None
+) -> Guion:
+    """El guion de un caso del dataset ``agente``: el modelo hace lo que espera el caso.
+
+    El idioma del caso es ``idioma`` en su metadata o, si no, el de su viajero.
+    """
+
+    metadata = metadata or {}
+    viajero_id = str(entrada.get("viajero") or "1001")
+    persona = buscar_viajero(viajero_id)
+    idioma = str(metadata.get("idioma") or (persona.idioma if persona else "es"))
+    mensaje = str(entrada.get("mensaje") or "")
+    case_id = str(metadata.get("case_id") or _hash(mensaje)[:8])
+    scenario = Scenario(
+        scenario_id=case_id,
+        categoria=str(metadata.get("categoria") or ""),
+        viajero=viajero_id,
+        idioma=idioma,
+        hoy=date.fromisoformat(str(entrada.get("hoy") or "2026-11-16")),
+        mensaje=mensaje,
+        expected={**esperado, "caso": True},
+    )
+    return Guion(scenario, semilla=f"caso:{case_id}")
+
+
+def _pasos_caso(
+    guion: Guion, sistema: str, disponibles: Sequence[str]
+) -> list[list[tuple[str, dict[str, Any]]]]:
+    """Las herramientas que usaría un buen agente con este prompt para el caso."""
+
+    scenario = guion.scenario
+
+    def elige(opciones: str) -> str:
+        alternativas = opciones.split("|")
+        return next((nombre for nombre in alternativas if nombre in disponibles), alternativas[0])
+
+    esperadas = scenario.expected.get("tools", [])
+    nombres = list(dict.fromkeys(elige(opciones) for opciones in esperadas))
+    if scenario.categoria == "devoluciones":
+        if _devoluciones_agiles(sistema):
+            return [[("solicitar_devolucion", _args_caso("solicitar_devolucion", scenario))]]
+        # La regla de siempre: antes de devolver nada, se mira la normativa.
+        if "buscar_normativa" not in nombres:
+            nombres.insert(0, "buscar_normativa")
+    nombres = [nombre for nombre in nombres if not disponibles or nombre in disponibles]
+    consultas = [(n, _args_caso(n, scenario)) for n in nombres if n not in ACCIONES]
+    acciones = [(n, _args_caso(n, scenario)) for n in nombres if n in ACCIONES]
+    return [paso for paso in (consultas, acciones) if paso]
+
+
+def _linea_en(texto: str) -> str | None:
+    match = re.search(r"\bL\s?(\d)\b", texto, re.IGNORECASE)
+    return f"L{match.group(1)}" if match and f"L{match.group(1)}" in lineas() else None
+
+
+def _estacion_en(texto: str, linea: str | None) -> str | None:
+    bajo = texto.lower()
+    nombradas = [info["nombre"] for info in estaciones().values() if info["nombre"].lower() in bajo]
+    if linea:
+        de_la_linea = {estaciones()[code]["nombre"] for code in lineas()[linea]["estaciones"]}
+        nombradas = [nombre for nombre in nombradas if nombre in de_la_linea] or nombradas
+    return nombradas[0] if nombradas else None
+
+
+def _dia_en(texto: str, hoy: date) -> str:
+    """El día del que habla el viajero, como se lo pasaría el modelo a una herramienta."""
+
+    bajo = texto.lower()
+    match = re.search(r"\b(\d{1,2}) (?:de |d')?(\w+)", bajo)
+    if match and match.group(2) in MESES_CASO:
+        try:
+            return date(hoy.year, MESES_CASO[match.group(2)], int(match.group(1))).isoformat()
+        except ValueError:
+            pass
+    match = re.search(rf"\b(?:{DIAS_SEMANA_CASO}) (\d{{1,2}})\b|\bel (\d{{1,2}})\b", bajo)
+    if match:
+        numero = int(match.group(1) or match.group(2))
+        try:
+            return date(hoy.year, hoy.month, numero).isoformat()
+        except ValueError:
+            pass
+    if re.search(r"esta mañana|aquest matí|this morning|\bhoy\b|\bavui\b|\btoday\b", bajo):
+        return "hoy"
+    if re.search(r"\bmañana\b|\bdemà\b|\btomorrow\b", bajo):
+        return "mañana"
+    match = re.search(rf"\b({DIAS_SEMANA_CASO})\b", bajo)
+    if match:
+        return match.group(1)
+    if re.search(r"fin de semana|cap de setmana|weekend", bajo):
+        return "sábado"
+    if re.search(r"\bayer\b|\bahir\b|\byesterday\b", bajo):
+        return (hoy - timedelta(days=1)).isoformat()
+    return "hoy"
+
+
+def _hora_en(texto: str) -> str | None:
+    match = re.search(r"\b(\d{1,2}):(\d{2})\b", texto)
+    return f"{int(match.group(1)):02d}:{match.group(2)}" if match else None
+
+
+def _titulo_en(texto: str) -> str | None:
+    bajo = texto.lower()
+    for clave, patron in (
+        ("T-10", r"t-?10"),
+        ("T-Mes", r"t-?mes"),
+        ("T-Jove", r"t-?jove"),
+        ("T-Turista", r"t-?turista"),
+        ("senzill", r"sencill|senzill|single"),
+    ):
+        if re.search(patron, bajo):
+            return clave
+    return None
+
+
+def _importe_caso(scenario: Scenario) -> float:
+    for dato in scenario.expected.get("menciona", []):
+        for alternativa in str(dato).split("|"):
+            if re.fullmatch(r"\d+[,.]\d+", alternativa.strip()):
+                return float(alternativa.replace(",", "."))
+    return _precio_senzill()
+
+
+def _args_caso(nombre: str, scenario: Scenario) -> dict[str, Any]:
+    """Los argumentos de ``nombre`` tal como los sacaría el modelo del mensaje."""
+
+    texto = scenario.mensaje
+    linea = _linea_en(texto)
+    estacion = _estacion_en(texto, linea)
+    hora = _hora_en(texto)
+    con_linea = {"linea": linea} if linea else {}
+    con_hora = {"hora": hora} if hora else {}
+    if nombre in ("consultar_horario", "proximos_trenes"):
+        linea = linea or "L1"
+        estacion = estacion or estaciones()[lineas()[linea]["estaciones"][0]]["nombre"]
+        args: dict[str, Any] = {"linea": linea, "estacion": estacion, **con_hora}
+        if nombre == "consultar_horario":
+            args["dia"] = _dia_en(texto, scenario.hoy)
+        return args
+    if nombre == "consultar_incidencias":
+        return {"dia": _dia_en(texto, scenario.hoy), **con_linea}
+    if nombre == "consultar_tarifas":
+        titulo = _titulo_en(texto)
+        return {"titulo": titulo} if titulo else {}
+    if nombre == "buscar_normativa":
+        return {"pregunta": texto}
+    if nombre == "buscar_objeto_perdido":
+        return {"descripcion": texto, **con_linea}
+    if nombre == "suscribir_alertas":
+        return {"linea": linea or "L1"}
+    if nombre == "abrir_reclamacion":
+        return {"motivo": "queja del viajero", "detalle": texto}
+    if nombre == "solicitar_devolucion":
+        return {
+            "titulo": _titulo_en(texto) or "senzill",
+            "importe": _importe_caso(scenario),
+            "motivo": "retraso",
+        }
+    return {}
+
+
+def _neutro(dato: str) -> bool:
+    """Si un dato se escribe igual en cualquier idioma: horas, precios, nombres, códigos."""
+
+    return any(caracter.isdigit() or caracter.isupper() for caracter in dato)
+
+
+def _accion_hecha(resultado: Resultado, idioma: str) -> str:
+    referencia = resultado.datos.get("referencia")
+    if not referencia:
+        return _t(
+            idioma,
+            "De acuerdo, no lo he tramitado.",
+            "D'acord, no ho he tramitat.",
+            "OK, I haven't done it.",
+        )
+    if resultado.nombre == "solicitar_devolucion":
+        return _t(
+            idioma,
+            f"He solicitado la devolución (referencia {referencia}).",
+            f"He sol·licitat la devolució (referència {referencia}).",
+            f"I've requested the refund (reference {referencia}).",
+        )
+    if resultado.nombre == "abrir_reclamacion":
+        return _t(
+            idioma,
+            f"He registrado tu reclamación (referencia {referencia}).",
+            f"He registrat la teva reclamació (referència {referencia}).",
+            f"I've registered your complaint (reference {referencia}).",
+        )
+    linea = resultado.args.get("linea", "")
+    return _t(
+        idioma,
+        f"Te he suscrito a los avisos de la {linea} (referencia {referencia}).",
+        f"T'he subscrit als avisos de la {linea} (referència {referencia}).",
+        f"You're now subscribed to the {linea} alerts (reference {referencia}).",
+    )
+
+
+def redactar_caso(guion: Guion, sistema: str, resultados: Sequence[Resultado]) -> str:
+    """La respuesta a un caso de la puerta: los datos que pide el caso, en su idioma.
+
+    Si el modelo contesta en otro idioma, solo conserva los datos que se escriben igual en
+    cualquiera (horas, precios, nombres): las palabras del idioma del viajero se pierden.
+    """
+
+    idioma_viajero = guion.scenario.idioma
+    guion = _idioma_respuesta(guion, sistema)
+    scenario = guion.scenario
+    idioma = scenario.idioma
+    if resultados and resultados[-1].datos.get("estado") == "calculando":
+        texto = _todavia_calculando(idioma)
+    else:
+        frases = [_accion_hecha(r, idioma) for r in resultados if r.nombre in ACCIONES]
+        pidio_devolucion = any(r.nombre == "solicitar_devolucion" for r in resultados)
+        if scenario.categoria == "devoluciones" and not pidio_devolucion:
+            frases.append(
+                _t(
+                    idioma,
+                    "Según la Política de devoluciones, en tu caso no procede devolver el importe.",
+                    "Segons la Política de devolucions, en el teu cas no correspon retornar "
+                    "l'import.",
+                    "According to the refunds policy, your journey can't be refunded.",
+                )
+            )
+        datos = [str(dato).split("|")[0] for dato in scenario.expected.get("menciona", [])]
+        if idioma != idioma_viajero:
+            datos = [dato for dato in datos if _neutro(dato)]
+        if datos:
+            lista = ", ".join(datos)
+            frases.append(
+                _t(
+                    idioma,
+                    f"Esto es lo que he encontrado: {lista}.",
+                    f"Això és el que he trobat: {lista}.",
+                    f"Here's what I found: {lista}.",
+                )
+            )
+        if not frases:
+            frases.append(
+                _t(
+                    idioma,
+                    "Lo he consultado y no tengo más datos que darte.",
+                    "Ho he consultat i no tinc més dades per donar-te.",
+                    "I've checked and I have no more details to give you.",
+                )
+            )
+        texto = " ".join(frases)
+    return _con_cercania(texto, guion) if _es_cercano(sistema) else texto

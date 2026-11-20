@@ -33,8 +33,9 @@ from nexus.data import estaciones, find_station, load, viajeros
 from nexus.data import viajero as buscar_viajero
 from nexus.rag.documents import DOCS_DIR
 from nexus.simulation.types import Scenario
-from nexus.tools.horarios import schedule
+from nexus.tools.horarios import _clock, _hour_minutes, _minutes, day_type, schedule
 from nexus.tools.incidencias import incidents_on
+from nexus.tools.proximos import HORA_POR_DEFECTO, panel_tiempo_real
 
 CATEGORIAS = (
     "horarios",
@@ -60,6 +61,9 @@ PESOS_CATEGORIA = {
     "fuera_de_ambito": 5,
     "ininteligible": 3,
 }
+
+# Las preguntas por el próximo tren (capítulo 5) son de las más habituales.
+PESO_PROXIMOS = 30
 
 # Viajero que usa cada plantilla cuando no se pide uno concreto.
 VIAJERO_POR_IDIOMA = {"es": "1001", "ca": "1002", "en": "1008"}
@@ -520,6 +524,8 @@ def devolucion(
                 "motivo": motivo,
                 "importe": importe if procedente else 0.0,
                 "incidencia": incidencia_id,
+                "titulo": load("tarifas")["titulos"][titulo]["nombre"],
+                "importe_viaje": importe,
             },
         )
 
@@ -532,6 +538,60 @@ def devolucion(
         approvals=("approve",),
         disponible_desde=fecha_viaje + timedelta(days=1) if fecha_viaje else None,
     )
+
+
+def proximos_trenes(
+    plantilla_id: str, idioma: str, mensaje: str, *, linea: str, estacion: str
+) -> Plantilla:
+    """Una pregunta por los próximos trenes: la responde la herramienta del cambio D.
+
+    La verdad sale del panel de tiempo real, no de la herramienta.
+    """
+
+    def construir(hoy: date, _viajero: str) -> dict[str, Any]:
+        codigo = find_station(estacion)
+        assert codigo is not None, estacion
+        apertura = _minutes(load("horarios")["tipos_dia"][day_type(hoy)]["apertura"])
+        desde = _hour_minutes(HORA_POR_DEFECTO, apertura)
+        llegadas = panel_tiempo_real(linea, hoy)[codigo.lower()]
+        siguientes = [_clock(minuto) for minuto in llegadas if minuto >= desde][:3]
+        return _expected(
+            llamadas=[{"name": "proximos_trenes", "args": {"linea": linea, "estacion": estacion}}],
+            tools=["proximos_trenes"],
+            menciona=[_hora(siguientes[0])] if siguientes else [SIN_SERVICIO],
+            verdad={"dato": "proximos", "proximos": siguientes},
+            peso=PESO_PROXIMOS,
+        )
+
+    return Plantilla(plantilla_id, "horarios", idioma, mensaje, construir)
+
+
+def _proximos() -> list[Plantilla]:
+    """Las preguntas por el próximo tren. Solo las hace el simulador del capítulo 5."""
+
+    return [
+        proximos_trenes(
+            "prox-pma-es",
+            "es",
+            "¿Cuándo pasa el próximo tren de la L1 por Plaça Major?",
+            linea="L1",
+            estacion="Plaça Major",
+        ),
+        proximos_trenes(
+            "prox-hge-ca",
+            "ca",
+            "Quan passa el proper metro de la L4 per Hospital General?",
+            linea="L4",
+            estacion="Hospital General",
+        ),
+        proximos_trenes(
+            "prox-pll-en",
+            "en",
+            "When is the next L3 train at Platja Llarga?",
+            linea="L3",
+            estacion="Platja Llarga",
+        ),
+    ]
 
 
 def rechazo(plantilla_id: str, idioma: str, mensaje: str, *, verdict: str) -> Plantilla:
@@ -989,11 +1049,13 @@ def scenarios(
     categorias: Iterable[str] | None = None,
     idiomas: Iterable[str] | None = None,
     historia: bool = False,
+    proximos: bool = False,
 ) -> list[Scenario]:
     """Las peticiones del catálogo para ``hoy``, con su verdad calculada ese día.
 
     Con ``viajero``, solo las de su idioma y a su nombre. Los casos de la historia (Pere
-    y Marta) tienen día y viajero fijos y solo se incluyen con ``historia=True``.
+    y Marta) tienen día y viajero fijos y solo se incluyen con ``historia=True``. Las
+    preguntas por el próximo tren (capítulo 5) solo se incluyen con ``proximos=True``.
     """
 
     from nexus.settings import settings
@@ -1007,7 +1069,7 @@ def scenarios(
     if persona is not None:
         wanted_langs = {persona.idioma} & (wanted_langs or {persona.idioma})
     result = []
-    for plantilla in plantillas():
+    for plantilla in (*plantillas(), *(_proximos() if proximos else ())):
         es_historia = plantilla.hoy is not None
         if es_historia and not historia:
             continue
@@ -1031,12 +1093,16 @@ def story_scenarios() -> dict[str, Scenario]:
     }
 
 
-def pick_scenario(rng: random.Random, hoy: date, viajero_id: str | None = None) -> Scenario:
+def pick_scenario(
+    rng: random.Random, hoy: date, viajero_id: str | None = None, *, proximos: bool = False
+) -> Scenario:
     """Una petición al azar para ``hoy``, de un viajero al azar si no se indica."""
 
     quien = viajero_id or rng.choice(sorted(viajeros()))
-    catalogo = scenarios(hoy, viajero=quien)
-    pesos = [PESOS_CATEGORIA[scenario.categoria] for scenario in catalogo]
+    catalogo = scenarios(hoy, viajero=quien, proximos=proximos)
+    pesos = [
+        scenario.expected.get("peso", PESOS_CATEGORIA[scenario.categoria]) for scenario in catalogo
+    ]
     return rng.choices(catalogo, weights=pesos, k=1)[0]
 
 

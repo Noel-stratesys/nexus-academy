@@ -4,18 +4,23 @@ Cuatro cambios esperaban despliegue. Comprueba que ninguno se ha quedado a media
 lo inseguro no ha llegado a producción, que producción conserva el tono de Marc y las
 reglas del prompt original, que el dataset agente cubre lo que falló en el canary, y que
 la herramienta de próximos trenes funciona.
+
+Las comprobaciones del extra (la alarma de tokens) son de nivel extra: se muestran, pero
+no hacen fallar la misión.
 """
 
-from datetime import date
+from datetime import UTC, date, datetime
 from typing import Any
 from urllib.parse import quote
 
 import httpx
+import pytest
 
 from evaluation.datasets.agente import CASES, DATASET
 from nexus.data import viajero
 from nexus.prompts import EXECUTOR_PROMPT_NAME
 from nexus.tools.proximos import proximos
+from release.alarma import Llamada, llamadas_en_alarma
 from release.cambios import CAMBIOS, TONO_A
 from release.state import load_state
 
@@ -150,3 +155,44 @@ def test_proximos_trenes_encuentra_trenes_en_una_estacion_normal() -> None:
         f"El primer tren después de las 08:00 en Plaça Major (L1) pasa a las 08:01, no a "
         f"las {result['proximos_trenes'][0]['hora']}."
     )
+
+
+# --- Extra: la alarma de tokens -------------------------------------------------------
+
+
+def _llamada(tokens: int) -> Llamada:
+    return Llamada(
+        trace_id=f"traza-{tokens}",
+        release="blue",
+        tokens_entrada=tokens - 40,
+        tokens_salida=40,
+        inicio=datetime(2026, 11, 20, 9, 0, tzinfo=UTC),
+    )
+
+
+@pytest.mark.extra
+def test_extra_la_alarma_tiene_umbral() -> None:
+    """La alarma de tokens tiene un umbral en release.toml"""
+
+    assert load_state().alarma_tokens > 0, (
+        "La alarma no tiene umbral. Mira en Langfuse cuántos tokens gasta una llamada normal "
+        "y elige el tuyo con uv run alarma --umbral <tokens>."
+    )
+
+
+@pytest.mark.extra
+def test_extra_la_alarma_salta_con_las_llamadas_que_pasan_el_umbral() -> None:
+    """llamadas_en_alarma devuelve las llamadas que pasan el umbral, de más a menos"""
+
+    llamadas = [_llamada(tokens) for tokens in (1800, 9000, 4000, 5200)]
+    try:
+        resultado = llamadas_en_alarma(llamadas, 4000)
+        apagada = llamadas_en_alarma(llamadas, 0)
+    except NotImplementedError:
+        pytest.fail("Completa llamadas_en_alarma en release/alarma.py.")
+    tokens = [llamada.tokens for llamada in resultado]
+    assert tokens == [9000, 5200], (
+        f"Con umbral 4000 y llamadas de 1800, 9000, 4000 y 5200 tokens devuelve {tokens}. "
+        "Relee la docstring: ¿qué llamadas hacen saltar la alarma y en qué orden van?"
+    )
+    assert apagada == [], "Con umbral 0 la alarma está apagada: no debería devolver ninguna."

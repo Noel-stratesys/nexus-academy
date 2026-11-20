@@ -171,5 +171,6 @@ Todo lo que harás desde la terminal empieza por `uv run`. `uv run help` los lis
 | `uv run judge-agreement` | Comparar los jueces con las anotaciones humanas | 3 |
 | `uv run index --buscar "…"` | Probar el buscador de normativa | 4 |
 | `uv run release …` · `uv run simulate` | Desplegar por fases y simular viajeros | 5 |
+| `uv run alarma` | Extra: alarma de tokens por llamada | 5 |
 
 Siguiente: [01 · Dos prompts y una discusión](01-dos-prompts-y-una-discusion.md).

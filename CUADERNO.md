@@ -314,3 +314,9 @@ desplegar, usa una fila nueva.
 
 - [ ] Green no tiene tráfico al terminar.
 - [ ] `uv run check 5` sale en verde.
+
+Extra · La alarma de tokens:
+
+| Umbral (tokens por llamada) | Por qué ese número | ¿Saltó con `--provocar`? | ¿Con qué cambio del canary habría saltado? |
+| --- | --- | --- | --- |
+| | | [ ] sí [ ] no | |

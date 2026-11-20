@@ -30,6 +30,7 @@ seed = "nexus.seed:main"
 check = "nexus.checks:main"
 release = "release.cli:release"
 simulate = "release.cli:simulate"
+alarma = "release.cli:alarma"
 help = "nexus.cli:show_help"
 
 [build-system]
